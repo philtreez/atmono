@@ -1,339 +1,470 @@
-async function setup() {
-    const patchExportURL = "export/patch.export.json";
+// ================= Three.js + Post-Processing Setup =================
 
-    // Create AudioContext
-    const WAContext = window.AudioContext || window.webkitAudioContext;
-    const context = new WAContext();
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x000000);
 
-    // Create gain node and connect it to audio output
-    const outputNode = context.createGain();
-    outputNode.connect(context.destination);
-    
-    // Fetch the exported patcher
-    let response, patcher;
-    try {
-        response = await fetch(patchExportURL);
-        patcher = await response.json();
-    
-        if (!window.RNBO) {
-            // Load RNBO script dynamically
-            // Note that you can skip this by knowing the RNBO version of your patch
-            // beforehand and just include it using a <script> tag
-            await loadRNBOScript(patcher.desc.meta.rnboversion);
-        }
+const camera = new THREE.PerspectiveCamera(
+  75,
+  window.innerWidth / window.innerHeight,
+  0.1,
+  1000
+);
+camera.position.z = 5;
 
-    } catch (err) {
-        const errorContext = {
-            error: err
-        };
-        if (response && (response.status >= 300 || response.status < 200)) {
-            errorContext.header = `Couldn't load patcher export bundle`,
-            errorContext.description = `Check app.js to see what file it's trying to load. Currently it's` +
-            ` trying to load "${patchExportURL}". If that doesn't` + 
-            ` match the name of the file you exported from RNBO, modify` + 
-            ` patchExportURL in app.js.`;
-        }
-        if (typeof guardrails === "function") {
-            guardrails(errorContext);
-        } else {
-            throw err;
-        }
-        return;
-    }
-    
-    // (Optional) Fetch the dependencies
-    let dependencies = [];
-    try {
-        const dependenciesResponse = await fetch("export/dependencies.json");
-        dependencies = await dependenciesResponse.json();
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+const threeContainer = document.getElementById("threejs-container") || document.body;
+threeContainer.appendChild(renderer.domElement);
 
-        // Prepend "export" to any file dependenciies
-        dependencies = dependencies.map(d => d.file ? Object.assign({}, d, { file: "export/" + d.file }) : d);
-    } catch (e) {}
+const composer = new THREE.EffectComposer(renderer);
+const renderPass = new THREE.RenderPass(scene, camera);
+composer.addPass(renderPass);
 
-    // Create the device
-    let device;
-    try {
-        device = await RNBO.createDevice({ context, patcher });
-    } catch (err) {
-        if (typeof guardrails === "function") {
-            guardrails({ error: err });
-        } else {
-            throw err;
-        }
-        return;
-    }
+const bloomPass = new THREE.UnrealBloomPass(
+  new THREE.Vector2(window.innerWidth, window.innerHeight),
+  0.5,  // Stärke
+  0.1,  // Radius
+  0.3   // Schwellenwert
+);
+bloomPass.threshold = 0;
+bloomPass.strength = 0.5;
+bloomPass.radius = 0.2;
+composer.addPass(bloomPass);
 
-    // (Optional) Load the samples
-    if (dependencies.length)
-        await device.loadDataBufferDependencies(dependencies);
+const glitchPass = new THREE.GlitchPass();
+glitchPass.enabled = false;
+composer.addPass(glitchPass);
 
-    // Connect the device to the web audio graph
-    device.node.connect(outputNode);
+// ================= Star Field (Hintergrund) =================
 
-    // (Optional) Extract the name and rnbo version of the patcher from the description
-    document.getElementById("patcher-title").innerText = (patcher.desc.meta.filename || "Unnamed Patcher") + " (v" + patcher.desc.meta.rnboversion + ")";
-
-    // (Optional) Automatically create sliders for the device parameters
-    makeSliders(device);
-
-    // (Optional) Create a form to send messages to RNBO inputs
-    makeInportForm(device);
-
-    // (Optional) Attach listeners to outports so you can log messages from the RNBO patcher
-    attachOutports(device);
-
-    // (Optional) Load presets, if any
-    loadPresets(device, patcher);
-
-    // (Optional) Connect MIDI inputs
-    makeMIDIKeyboard(device);
-
-    document.body.onclick = () => {
-        context.resume();
-    }
-
-    // Skip if you're not using guardrails.js
-    if (typeof guardrails === "function")
-        guardrails();
+function createStarField() {
+  const starCount = 10000;
+  const starGeometry = new THREE.BufferGeometry();
+  const positions = new Float32Array(starCount * 3);
+  for (let i = 0; i < starCount; i++) {
+    positions[i * 3]     = (Math.random() - 0.5) * 2000;
+    positions[i * 3 + 1] = (Math.random() - 0.5) * 2000;
+    positions[i * 3 + 2] = (Math.random() - 0.5) * 2000;
+  }
+  starGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  const starMaterial = new THREE.PointsMaterial({
+    color: 0xffffff,
+    size: 0.7,
+    sizeAttenuation: true
+  });
+  const stars = new THREE.Points(starGeometry, starMaterial);
+  scene.add(stars);
 }
+createStarField();
+
+// ================= Zusätzliche Parameter mit Smoothing =================
+let targetMorphIntensity = 0.3;    // Wird per RNBO-Nachricht gesetzt
+let currentMorphIntensity = 0.3;   // Aktueller, geglätteter Wert
+
+let targetMorphFrequency = 4.0;    // Zielwert für die Frequenz
+let currentMorphFrequency = 4.0;   // Geglätteter Frequenzwert
+
+let targetNoiseFactor = 0.1;       // Zielwert für den Noise-Effekt
+let currentNoiseFactor = 0.1;      // Geglätteter Noise-Wert
+
+const smoothingFactor = 0.05;      // Kleinere Werte = glattere Übergänge
+
+// ================= Morphing 3D-Objekt Setup =================
+
+// Erstelle eine feingetesselte Kugelgeometrie als Basis für das Morphing
+const geometry = new THREE.SphereGeometry(1.5, 128, 128);
+// Speichere die ursprünglichen Vertex-Positionen
+geometry.userData.origPositions = geometry.attributes.position.array.slice(0);
+
+const material = new THREE.MeshBasicMaterial({
+  color: 0xffffff,
+  wireframe: true
+});
+
+const morphObject = new THREE.Mesh(geometry, material);
+scene.add(morphObject);
+
+// ================= Clock =================
+
+const clock = new THREE.Clock();
+
+// ================= Animate Function =================
+
+function animate() {
+  requestAnimationFrame(animate);
+  const time = clock.getElapsedTime();
+
+  // Smoothing: Angleiche alle Zielwerte
+  currentMorphIntensity += (targetMorphIntensity - currentMorphIntensity) * smoothingFactor;
+  currentMorphFrequency += (targetMorphFrequency - currentMorphFrequency) * smoothingFactor;
+  currentNoiseFactor     += (targetNoiseFactor - currentNoiseFactor) * smoothingFactor;
+
+  // Aktualisiere die Scheitelpunkte des Objekts
+  const positions = morphObject.geometry.attributes.position.array;
+  const origPositions = morphObject.geometry.userData.origPositions;
+  const vertexCount = positions.length / 3;
+
+  for (let i = 0; i < vertexCount; i++) {
+    const ix = i * 3;
+    const ox = origPositions[ix];
+    const oy = origPositions[ix + 1];
+    const oz = origPositions[ix + 2];
+
+    // Kombiniere einen Sinus-Effekt mit einem "Rausch"-Effekt
+    const sinOffset = Math.sin(time + (ox + oy + oz) * currentMorphFrequency);
+    const noiseOffset = currentNoiseFactor * Math.sin(time * 0.5 + (ox - oy + oz));
+    const offset = sinOffset + noiseOffset;
+
+    positions[ix]     = ox + ox * offset * currentMorphIntensity;
+    positions[ix + 1] = oy + oy * offset * currentMorphIntensity;
+    positions[ix + 2] = oz + oz * offset * currentMorphIntensity;
+  }
+  morphObject.geometry.attributes.position.needsUpdate = true;
+
+  // Drehe das Objekt für einen dynamischen Effekt
+  morphObject.rotation.x += 0.005;
+  morphObject.rotation.y += 0.005;
+
+  // Optionale leichte Kamera-Bewegung (hier kannst du auch statisch bleiben, um den "Schwebe-Effekt" zu verstärken)
+  camera.position.x = Math.sin(time * 0.5) * 0.5;
+  camera.rotation.y = Math.sin(time * 0.3) * 0.1;
+
+  composer.render();
+}
+animate();
+
+// ================= RNBO Integration =================
+
+window.rnboDevice = null;
+window.device = null; // Für sendValueToRNBO
+let parameterQueue = {};
+
+async function setupRNBO() {
+  const patchExportURL = "https://atmono-philtreezs-projects.vercel.app/export/patch.export.json";
+  const WAContext = window.AudioContext || window.webkitAudioContext;
+  const context = new WAContext();
+  const outputNode = context.createGain();
+  outputNode.connect(context.destination);
+  
+  let response, patcher;
+  try {
+    response = await fetch(patchExportURL);
+    patcher = await response.json();
+    if (!window.RNBO) {
+      await loadRNBOScript(patcher.desc.meta.rnboversion);
+    }
+  } catch (err) {
+    console.error("Fehler beim Laden des RNBO-Patchers:", err);
+    return;
+  }
+  
+  let deviceInstance;
+  try {
+    deviceInstance = await RNBO.createDevice({ context, patcher });
+  } catch (err) {
+    console.error("Fehler beim Erstellen des RNBO-Geräts:", err);
+    return;
+  }
+  
+  window.rnboDevice = deviceInstance;
+  window.device = deviceInstance;
+  deviceInstance.node.connect(outputNode);
+  attachRNBOMessages(deviceInstance);
+  attachOutports(deviceInstance);
+  flushParameterQueue();
+  
+  document.body.onclick = () => context.resume();
+}
+
+setupRNBO();
 
 function loadRNBOScript(version) {
-    return new Promise((resolve, reject) => {
-        if (/^\d+\.\d+\.\d+-dev$/.test(version)) {
-            throw new Error("Patcher exported with a Debug Version!\nPlease specify the correct RNBO version to use in the code.");
-        }
-        const el = document.createElement("script");
-        el.src = "https://c74-public.nyc3.digitaloceanspaces.com/rnbo/" + encodeURIComponent(version) + "/rnbo.min.js";
-        el.onload = resolve;
-        el.onerror = function(err) {
-            console.log(err);
-            reject(new Error("Failed to load rnbo.js v" + version));
-        };
-        document.body.append(el);
-    });
-}
-
-function makeSliders(device) {
-    let pdiv = document.getElementById("rnbo-parameter-sliders");
-    let noParamLabel = document.getElementById("no-param-label");
-    if (noParamLabel && device.numParameters > 0) pdiv.removeChild(noParamLabel);
-
-    // This will allow us to ignore parameter update events while dragging the slider.
-    let isDraggingSlider = false;
-    let uiElements = {};
-
-    device.parameters.forEach(param => {
-        // Subpatchers also have params. If we want to expose top-level
-        // params only, the best way to determine if a parameter is top level
-        // or not is to exclude parameters with a '/' in them.
-        // You can uncomment the following line if you don't want to include subpatcher params
-        
-        //if (param.id.includes("/")) return;
-
-        // Create a label, an input slider and a value display
-        let label = document.createElement("label");
-        let slider = document.createElement("input");
-        let text = document.createElement("input");
-        let sliderContainer = document.createElement("div");
-        sliderContainer.appendChild(label);
-        sliderContainer.appendChild(slider);
-        sliderContainer.appendChild(text);
-
-        // Add a name for the label
-        label.setAttribute("name", param.name);
-        label.setAttribute("for", param.name);
-        label.setAttribute("class", "param-label");
-        label.textContent = `${param.name}: `;
-
-        // Make each slider reflect its parameter
-        slider.setAttribute("type", "range");
-        slider.setAttribute("class", "param-slider");
-        slider.setAttribute("id", param.id);
-        slider.setAttribute("name", param.name);
-        slider.setAttribute("min", param.min);
-        slider.setAttribute("max", param.max);
-        if (param.steps > 1) {
-            slider.setAttribute("step", (param.max - param.min) / (param.steps - 1));
-        } else {
-            slider.setAttribute("step", (param.max - param.min) / 1000.0);
-        }
-        slider.setAttribute("value", param.value);
-
-        // Make a settable text input display for the value
-        text.setAttribute("value", param.value.toFixed(1));
-        text.setAttribute("type", "text");
-
-        // Make each slider control its parameter
-        slider.addEventListener("pointerdown", () => {
-            isDraggingSlider = true;
-        });
-        slider.addEventListener("pointerup", () => {
-            isDraggingSlider = false;
-            slider.value = param.value;
-            text.value = param.value.toFixed(1);
-        });
-        slider.addEventListener("input", () => {
-            let value = Number.parseFloat(slider.value);
-            param.value = value;
-        });
-
-        // Make the text box input control the parameter value as well
-        text.addEventListener("keydown", (ev) => {
-            if (ev.key === "Enter") {
-                let newValue = Number.parseFloat(text.value);
-                if (isNaN(newValue)) {
-                    text.value = param.value;
-                } else {
-                    newValue = Math.min(newValue, param.max);
-                    newValue = Math.max(newValue, param.min);
-                    text.value = newValue;
-                    param.value = newValue;
-                }
-            }
-        });
-
-        // Store the slider and text by name so we can access them later
-        uiElements[param.id] = { slider, text };
-
-        // Add the slider element
-        pdiv.appendChild(sliderContainer);
-    });
-
-    // Listen to parameter changes from the device
-    device.parameterChangeEvent.subscribe(param => {
-        if (!isDraggingSlider)
-            uiElements[param.id].slider.value = param.value;
-        uiElements[param.id].text.value = param.value.toFixed(1);
-    });
-}
-
-function makeInportForm(device) {
-    const idiv = document.getElementById("rnbo-inports");
-    const inportSelect = document.getElementById("inport-select");
-    const inportText = document.getElementById("inport-text");
-    const inportForm = document.getElementById("inport-form");
-    let inportTag = null;
-    
-    // Device messages correspond to inlets/outlets or inports/outports
-    // You can filter for one or the other using the "type" of the message
-    const messages = device.messages;
-    const inports = messages.filter(message => message.type === RNBO.MessagePortType.Inport);
-
-    if (inports.length === 0) {
-        idiv.removeChild(document.getElementById("inport-form"));
-        return;
-    } else {
-        idiv.removeChild(document.getElementById("no-inports-label"));
-        inports.forEach(inport => {
-            const option = document.createElement("option");
-            option.innerText = inport.tag;
-            inportSelect.appendChild(option);
-        });
-        inportSelect.onchange = () => inportTag = inportSelect.value;
-        inportTag = inportSelect.value;
-
-        inportForm.onsubmit = (ev) => {
-            // Do this or else the page will reload
-            ev.preventDefault();
-
-            // Turn the text into a list of numbers (RNBO messages must be numbers, not text)
-            const values = inportText.value.split(/\s+/).map(s => parseFloat(s));
-            
-            // Send the message event to the RNBO device
-            let messageEvent = new RNBO.MessageEvent(RNBO.TimeNow, inportTag, values);
-            device.scheduleEvent(messageEvent);
-        }
+  return new Promise((resolve, reject) => {
+    if (/^\d+\.\d+\.\d+-dev$/.test(version)) {
+      throw new Error("Patcher exported with a Debug Version! Bitte gib die korrekte RNBO-Version an.");
     }
+    const el = document.createElement("script");
+    el.src = "https://c74-public.nyc3.digitaloceanspaces.com/rnbo/" + encodeURIComponent(version) + "/rnbo.min.js";
+    el.onload = resolve;
+    el.onerror = function(err) {
+      reject(new Error("Fehler beim Laden von rnbo.js v" + version));
+    };
+    document.body.appendChild(el);
+  });
+}
+
+function sendValueToRNBO(param, value) {
+  if (window.device && window.device.parametersById && window.device.parametersById.has(param)) {
+    window.device.parametersById.get(param).value = value;
+    console.log(`🎛 Updated RNBO param: ${param} = ${value}`);
+  } else {
+    console.warn(`rnboDevice nicht verfügbar. Parameter ${param} wird zwischengespeichert:`, value);
+    parameterQueue[param] = value;
+  }
+}
+
+function flushParameterQueue() {
+  if (window.device && window.device.parametersById) {
+    for (const [param, value] of Object.entries(parameterQueue)) {
+      if (window.device.parametersById.has(param)) {
+        window.device.parametersById.get(param).value = value;
+        console.log(`🎛 Zwischengespeicherter Parameter ${param} gesetzt auf ${value}`);
+      }
+    }
+    parameterQueue = {};
+  }
+}
+
+// ================= Steuerung: RNBO Nachrichten =================
+
+function updateSliderFromRNBO(id, value) {
+  const slider = document.getElementById("slider-" + id);
+  if (slider) {
+    slider.dataset.value = value;
+    const degrees = value * 270; // 0-1 entspricht 0 bis 270° Drehung
+    slider.style.transform = `rotate(${degrees}deg)`;
+  }
+}
+
+function attachRNBOMessages(device) {
+  const controlIds = ["s1", "s2", "s3", "s4", "s5", "s6", "s7", "s8", "vol", "b1", "b2", "b3", "b4", "b5", "b6", "b7", "b8"];
+
+  if (device.parameterChangeEvent) {
+    device.parameterChangeEvent.subscribe(param => {
+      if (param.id === "morph") {
+        targetMorphIntensity = parseFloat(param.value);
+        console.log(`Target morph intensity updated: ${targetMorphIntensity}`);
+      }
+      if (param.id === "morphFrequency") {
+        targetMorphFrequency = parseFloat(param.value);
+        console.log(`Target morph frequency updated: ${targetMorphFrequency}`);
+      }
+      if (param.id === "noiseFactor") {
+        targetNoiseFactor = parseFloat(param.value);
+        console.log(`Target noise factor updated: ${targetNoiseFactor}`);
+      }
+      // Bestehende Steuerung für Slider und Buttons
+      if (controlIds.includes(param.id)) {
+        if (param.id.startsWith("b")) {
+          updateButtonFromRNBO(param.id, parseFloat(param.value));
+        } else {
+          updateSliderFromRNBO(param.id, parseFloat(param.value));
+        }
+      }
+      console.log(`Parameter ${param.id} geändert: ${param.value}`);
+    });
+  } else if (device.messageEvent) {
+    device.messageEvent.subscribe(ev => {
+      if (ev.tag === "morph") {
+        targetMorphIntensity = parseFloat(ev.payload);
+        console.log(`Target morph intensity updated: ${targetMorphIntensity}`);
+      }
+      if (ev.tag === "morphFrequency") {
+        targetMorphFrequency = parseFloat(ev.payload);
+        console.log(`Target morph frequency updated: ${targetMorphFrequency}`);
+      }
+      if (ev.tag === "noiseFactor") {
+        targetNoiseFactor = parseFloat(ev.payload);
+        console.log(`Target noise factor updated: ${targetNoiseFactor}`);
+      }
+      if (controlIds.includes(ev.tag)) {
+        if (ev.tag.startsWith("b")) {
+          updateButtonFromRNBO(ev.tag, parseFloat(ev.payload));
+        } else {
+          updateSliderFromRNBO(ev.tag, parseFloat(ev.payload));
+        }
+      }
+      console.log(`Message ${ev.tag}: ${ev.payload}`);
+    });
+  }
 }
 
 function attachOutports(device) {
-    const outports = device.outports;
-    if (outports.length < 1) {
-        document.getElementById("rnbo-console").removeChild(document.getElementById("rnbo-console-div"));
-        return;
+  device.messageEvent.subscribe(ev => {
+    // Handle grider und glitchy wie bisher:
+    if (ev.tag === "grider" && parseInt(ev.payload) === 1) {
+      const randomIndex = Math.floor(Math.random() * tunnelPlanes.length);
+      const randomPlane = tunnelPlanes[randomIndex];
+      const edges = new THREE.EdgesGeometry(gridGeometry);
+      const lineMaterial = new THREE.LineBasicMaterial({
+        color: 0x00ff82,
+        linewidth: 40,
+        transparent: true,
+        opacity: 0.65,
+        blending: THREE.AdditiveBlending,
+        depthTest: false,
+        depthWrite: false
+      });
+      const thickOutline = new THREE.LineSegments(edges, lineMaterial);
+      thickOutline.scale.set(1, 1, 1);
+      randomPlane.add(thickOutline);
+      setTimeout(() => {
+        randomPlane.remove(thickOutline);
+      }, 100);
     }
-
-    document.getElementById("rnbo-console").removeChild(document.getElementById("no-outports-label"));
-    device.messageEvent.subscribe((ev) => {
-
-        // Ignore message events that don't belong to an outport
-        if (outports.findIndex(elt => elt.tag === ev.tag) < 0) return;
-
-        // Message events have a tag as well as a payload
-        console.log(`${ev.tag}: ${ev.payload}`);
-
-        document.getElementById("rnbo-console-readout").innerText = `${ev.tag}: ${ev.payload}`;
-    });
-}
-
-function loadPresets(device, patcher) {
-    let presets = patcher.presets || [];
-    if (presets.length < 1) {
-        document.getElementById("rnbo-presets").removeChild(document.getElementById("preset-select"));
-        return;
+    
+    if (ev.tag === "glitchy") {
+      glitchPass.enabled = (parseInt(ev.payload) === 1);
     }
-
-    document.getElementById("rnbo-presets").removeChild(document.getElementById("no-presets-label"));
-    let presetSelect = document.getElementById("preset-select");
-    presets.forEach((preset, index) => {
-        const option = document.createElement("option");
-        option.innerText = preset.name;
-        option.value = index;
-        presetSelect.appendChild(option);
-    });
-    presetSelect.onchange = () => device.setPreset(presets[presetSelect.value].preset);
+    
+    // Hier prüfen wir, ob der Outport für Light-Daten ist
+    if (ev.tag.startsWith("light1") || ev.tag.startsWith("light2")) {
+      // updateLights erwartet den Outport-Namen (z. B. "light1" oder "light2") und einen Wert (0-8)
+      updateLights(ev.tag, ev.payload);
+    }
+    
+    console.log(`${ev.tag}: ${ev.payload}`);
+  });
 }
 
-function makeMIDIKeyboard(device) {
-    let mdiv = document.getElementById("rnbo-clickable-keyboard");
-    if (device.numMIDIInputPorts === 0) return;
-
-    mdiv.removeChild(document.getElementById("no-midi-label"));
-
-    const midiNotes = [49, 52, 56, 63];
-    midiNotes.forEach(note => {
-        const key = document.createElement("div");
-        const label = document.createElement("p");
-        label.textContent = note;
-        key.appendChild(label);
-        key.addEventListener("pointerdown", () => {
-            let midiChannel = 0;
-
-            // Format a MIDI message paylaod, this constructs a MIDI on event
-            let noteOnMessage = [
-                144 + midiChannel, // Code for a note on: 10010000 & midi channel (0-15)
-                note, // MIDI Note
-                100 // MIDI Velocity
-            ];
-        
-            let noteOffMessage = [
-                128 + midiChannel, // Code for a note off: 10000000 & midi channel (0-15)
-                note, // MIDI Note
-                0 // MIDI Velocity
-            ];
-        
-            // Including rnbo.min.js (or the unminified rnbo.js) will add the RNBO object
-            // to the global namespace. This includes the TimeNow constant as well as
-            // the MIDIEvent constructor.
-            let midiPort = 0;
-            let noteDurationMs = 250;
-        
-            // When scheduling an event to occur in the future, use the current audio context time
-            // multiplied by 1000 (converting seconds to milliseconds) for now.
-            let noteOnEvent = new RNBO.MIDIEvent(device.context.currentTime * 1000, midiPort, noteOnMessage);
-            let noteOffEvent = new RNBO.MIDIEvent(device.context.currentTime * 1000 + noteDurationMs, midiPort, noteOffMessage);
-        
-            device.scheduleEvent(noteOnEvent);
-            device.scheduleEvent(noteOffEvent);
-
-            key.classList.add("clicked");
-        });
-
-        key.addEventListener("pointerup", () => key.classList.remove("clicked"));
-
-        mdiv.appendChild(key);
-    });
+function updateLights(outport, value) {
+  const intVal = Math.round(parseFloat(value));
+  console.log(`Update Lights for ${outport}: ${intVal}`);
+  // Wenn der Wert 0 ist, sollen alle unsichtbar sein.
+  for (let i = 1; i <= 8; i++) {
+    const el = document.getElementById(`${outport}-${i}`);
+    if (el) {
+      el.style.opacity = (intVal === i) ? "1" : "0";
+    }
+  }
 }
 
-setup();
+// ================= Rotary Slider Setup (IDs: slider-s1 ... slider-s8) =================
+
+function setupRotarySliders() {
+  const sliderIds = ["s1", "s2", "s3", "s4", "s5", "s6", "s7", "s8"];
+  const sensitivity = 0.005; // Änderung pro Pixel
+  
+  sliderIds.forEach(id => {
+    const slider = document.getElementById("slider-" + id);
+    if (!slider) {
+      console.warn("Slider element nicht gefunden:", "slider-" + id);
+      return;
+    }
+    
+    slider.style.width = "50px";
+    slider.style.height = "50px";
+    slider.style.borderRadius = "50%";
+    slider.style.background = "url('https://cdn.prod.website-files.com/67c27c3b4c668c9f3ca429ed/67c5139a38c39d6a75bac9ac_silderpoint60_60.png') center/cover no-repeat";
+    slider.style.transform = "rotate(0deg)";
+    slider.style.touchAction = "none";
+    
+    slider.dataset.value = "0";
+    
+    let isDragging = false;
+    let startX = 0;
+    let startY = 0;
+    let initialValue = 0;
+    
+    slider.addEventListener("pointerdown", (e) => {
+      isDragging = true;
+      startX = e.clientX;
+      startY = e.clientY;
+      initialValue = parseFloat(slider.dataset.value);
+      slider.setPointerCapture(e.pointerId);
+    });
+    
+    slider.addEventListener("pointermove", (e) => {
+      if (!isDragging) return;
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+      const delta = (dx - dy) * sensitivity;
+      let newValue = initialValue + delta;
+      newValue = Math.max(0, Math.min(newValue, 1));
+      slider.dataset.value = newValue.toString();
+      const degrees = newValue * 270;
+      slider.style.transform = `rotate(${degrees}deg)`;
+      sendValueToRNBO(id, newValue);
+    });
+    
+    slider.addEventListener("pointerup", () => { isDragging = false; });
+    slider.addEventListener("pointercancel", () => { isDragging = false; });
+  });
+}
+
+// ================= Volume Slider Setup (IDs: volume-slider, volume-thumb) =================
+
+function setupVolumeSlider() {
+  const slider = document.getElementById("volume-slider");
+  const thumb = document.getElementById("volume-thumb");
+  if (!slider || !thumb) {
+    console.error("Volume slider elements not found!");
+    return;
+  }
+  
+  const sliderWidth = slider.offsetWidth;
+  const thumbWidth = thumb.offsetWidth;
+  const maxMovement = sliderWidth - thumbWidth;
+  
+  const initialValue = 0.05;
+  const initialX = maxMovement * initialValue;
+  thumb.style.left = initialX + "px";
+  sendValueToRNBO("vol", initialValue);
+  
+  let isDragging = false;
+  thumb.addEventListener("mousedown", (e) => {
+    isDragging = true;
+    e.preventDefault();
+  });
+  
+  document.addEventListener("mousemove", (e) => {
+    if (!isDragging) return;
+    const sliderRect = slider.getBoundingClientRect();
+    let newX = e.clientX - sliderRect.left - (thumb.offsetWidth / 2);
+    newX = Math.max(0, Math.min(newX, maxMovement));
+    thumb.style.left = newX + "px";
+    const normalizedValue = newX / maxMovement;
+    sendValueToRNBO("vol", normalizedValue);
+  });
+  
+  document.addEventListener("mouseup", () => { isDragging = false; });
+}
+
+function updateVolumeSliderFromRNBO(value) {
+  const slider = document.getElementById("volume-slider");
+  const thumb = document.getElementById("volume-thumb");
+  if (!slider || !thumb) return;
+  const maxMovement = slider.offsetWidth - thumb.offsetWidth;
+  thumb.style.left = (value * maxMovement) + "px";
+}
+
+// ================= Button Setup (IDs: b1 ... b8) =================
+
+function setupButtons() {
+  const buttonIds = ["b1", "b2", "b3", "b4", "b5", "b6", "b7", "b8"];
+  buttonIds.forEach(id => {
+    const button = document.getElementById(id);
+    if (!button) {
+      console.warn("Button element nicht gefunden:", id);
+      return;
+    }
+    // Initialer Zustand: 0 = unsichtbar
+    button.dataset.value = "0";
+    button.style.opacity = "0";
+    button.style.cursor = "pointer";
+    
+    button.addEventListener("click", () => {
+      let current = parseInt(button.dataset.value);
+      let newValue = (current === 0) ? 1 : 0;
+      button.dataset.value = newValue.toString();
+      button.style.opacity = (newValue === 1) ? "1" : "0";
+      sendValueToRNBO(id, newValue);
+    });
+  });
+}
+
+function updateButtonFromRNBO(id, value) {
+  const button = document.getElementById(id);
+  if (button) {
+    button.dataset.value = value.toString();
+    button.style.opacity = (parseInt(value) === 1) ? "1" : "0";
+  }
+}
+
+// ================= DOMContentLoaded Aufrufe =================
+
+document.addEventListener("DOMContentLoaded", () => {
+  setupVolumeSlider();
+  setupRotarySliders();
+  setupButtons();
+});
