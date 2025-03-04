@@ -28,7 +28,7 @@ const bloomPass = new THREE.UnrealBloomPass(
 );
 bloomPass.threshold = 0;
 bloomPass.strength = 0.5;
-bloomPass.radius = 0.2;
+bloomPass.radius = 0.35;
 composer.addPass(bloomPass);
 
 const glitchPass = new THREE.GlitchPass();
@@ -132,6 +132,27 @@ function animate() {
   composer.render();
 }
 animate();
+
+// ================= Effekt: Random Planet (seqlight) =================
+
+function triggerSeqlight() {
+  // Erstelle einen "Planeten" als Kugel
+  const planetGeometry = new THREE.SphereGeometry(0.5, 32, 32);
+  const planetMaterial = new THREE.MeshBasicMaterial({ color: 0xffaa00 });
+  const planetMesh = new THREE.Mesh(planetGeometry, planetMaterial);
+
+  // Platziere den Planeten zufällig im Raum (z. B. im Bereich -100 bis 100)
+  planetMesh.position.x = (Math.random() - 0.5) * 200;
+  planetMesh.position.y = (Math.random() - 0.5) * 200;
+  planetMesh.position.z = (Math.random() - 0.5) * 200;
+
+  scene.add(planetMesh);
+
+  // Entferne den Planeten nach 1 Sekunde wieder
+  setTimeout(() => {
+    scene.remove(planetMesh);
+  }, 1000);
+}
 
 // ================= RNBO Integration =================
 
@@ -243,6 +264,18 @@ function attachRNBOMessages(device) {
         targetNoiseFactor = parseFloat(param.value);
         console.log(`Target noise factor updated: ${targetNoiseFactor}`);
       }
+      if (param.id === "seqlight" && parseInt(param.value) === 1) {
+        triggerSeqlight();
+        console.log("seqlight ausgelöst: Planet erscheint zufällig im Weltall");
+      }
+      if (param.id === "bloomStrength") {
+        bloomPass.strength = parseFloat(param.value);
+        console.log("Bloom strength updated: " + bloomPass.strength);
+      }
+      if (param.id === "bloomRadius") {
+        bloomPass.radius = parseFloat(param.value);
+        console.log("Bloom radius updated: " + bloomPass.radius);
+      }
       // Bestehende Steuerung für Slider und Buttons
       if (controlIds.includes(param.id)) {
         if (param.id.startsWith("b")) {
@@ -266,6 +299,18 @@ function attachRNBOMessages(device) {
       if (ev.tag === "noiseFactor") {
         targetNoiseFactor = parseFloat(ev.payload);
         console.log(`Target noise factor updated: ${targetNoiseFactor}`);
+      }
+      if (ev.tag === "seqlight" && parseInt(ev.payload) === 1) {
+        triggerSeqlight();
+        console.log("seqlight ausgelöst: Planet erscheint zufällig im Weltall");
+      }
+      if (ev.tag === "bloomStrength") {
+        bloomPass.strength = parseFloat(ev.payload);
+        console.log("Bloom strength updated: " + bloomPass.strength);
+      }
+      if (ev.tag === "bloomRadius") {
+        bloomPass.radius = parseFloat(ev.payload);
+        console.log("Bloom radius updated: " + bloomPass.radius);
       }
       if (controlIds.includes(ev.tag)) {
         if (ev.tag.startsWith("b")) {
