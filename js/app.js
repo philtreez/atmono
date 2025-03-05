@@ -160,7 +160,7 @@ function triggerSeqlight() {
   // Entferne den Planeten nach 1 Sekunde wieder
   setTimeout(() => {
     scene.remove(planetMesh);
-  }, 1000);
+  }, 100);
 }
 
 // ================= RNBO Integration =================
