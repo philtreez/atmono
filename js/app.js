@@ -376,79 +376,54 @@ function updateLights(outport, value) {
 
 // ================= Rotary Slider Setup (IDs: slider-s1 ... slider-s8) =================
 
-function setupVerticalSliders() {
+function setupRotarySliders() {
   const sliderIds = ["s1", "s2", "s3", "s4", "s5", "s6", "s7", "s8"];
+  const sensitivity = 0.005; // Änderung pro Pixel
   
   sliderIds.forEach(id => {
-    // Hole den Container, der als Hintergrund dient
-    const sliderContainer = document.getElementById("slider-" + id);
-    if (!sliderContainer) {
-      console.warn("Slider container nicht gefunden:", "slider-" + id);
+    const slider = document.getElementById("slider-" + id);
+    if (!slider) {
+      console.warn("Slider element nicht gefunden:", "slider-" + id);
       return;
     }
     
-    // Style den Container (Hintergrund)
-    sliderContainer.style.width = "30px";
-    sliderContainer.style.height = "150px";
-    sliderContainer.style.position = "relative";
-    sliderContainer.style.backgroundColor = "#ccc"; // Hintergrundfarbe, z. B. hellgrau
-    sliderContainer.style.borderRadius = "4px";
-    sliderContainer.dataset.value = "0"; // Initialwert 0
+    slider.style.width = "50px";
+    slider.style.height = "50px";
+    slider.style.borderRadius = "50%";
+    slider.style.background = "url('https://cdn.prod.website-files.com/67c27c3b4c668c9f3ca429ed/67c5139a38c39d6a75bac9ac_silderpoint60_60.png') center/cover no-repeat";
+    slider.style.transform = "rotate(0deg)";
+    slider.style.touchAction = "none";
     
-    // Erstelle den Thumb, falls noch nicht vorhanden
-    let thumb = sliderContainer.querySelector(".thumb");
-    if (!thumb) {
-      thumb = document.createElement("div");
-      thumb.className = "thumb";
-      sliderContainer.appendChild(thumb);
-    }
+    slider.dataset.value = "0";
     
-    // Style den Thumb
-    thumb.style.width = "30px";
-    thumb.style.height = "40px";
-    thumb.style.position = "absolute";
-    thumb.style.top = "0px"; // Initial oben
-    thumb.style.left = "0px";
-    thumb.style.backgroundColor = "#888"; // z. B. dunkleres Grau
-    thumb.style.borderRadius = "4px";
-    thumb.style.touchAction = "none";
-    
-    // Variablen zur Steuerung der Drag-Interaktion
     let isDragging = false;
+    let startX = 0;
     let startY = 0;
     let initialValue = 0;
     
-    // Beim Pointer-Down am Thumb: Drag starten
-    thumb.addEventListener("pointerdown", (e) => {
+    slider.addEventListener("pointerdown", (e) => {
       isDragging = true;
+      startX = e.clientX;
       startY = e.clientY;
-      initialValue = parseFloat(sliderContainer.dataset.value);
-      thumb.setPointerCapture(e.pointerId);
+      initialValue = parseFloat(slider.dataset.value);
+      slider.setPointerCapture(e.pointerId);
     });
     
-    // Beim Pointer-Move: Verschiebe den Thumb vertikal
-    thumb.addEventListener("pointermove", (e) => {
+    slider.addEventListener("pointermove", (e) => {
       if (!isDragging) return;
-      
+      const dx = e.clientX - startX;
       const dy = e.clientY - startY;
-      // Berechne den verfügbaren Bewegungsbereich
-      const travel = sliderContainer.clientHeight - thumb.clientHeight;
-      // Berechne den neuen Wert (zwischen 0 und 1)
-      let delta = dy / travel;
+      const delta = (dx - dy) * sensitivity;
       let newValue = initialValue + delta;
       newValue = Math.max(0, Math.min(newValue, 1));
-      sliderContainer.dataset.value = newValue.toString();
-      
-      // Setze die neue Position des Thumbs
-      thumb.style.top = (newValue * travel) + "px";
-      
-      // Sende den neuen Wert an RNBO (oder andere Steuerungslogik)
+      slider.dataset.value = newValue.toString();
+      const degrees = newValue * 270;
+      slider.style.transform = `rotate(${degrees}deg)`;
       sendValueToRNBO(id, newValue);
     });
     
-    // Beende das Dragging
-    thumb.addEventListener("pointerup", () => { isDragging = false; });
-    thumb.addEventListener("pointercancel", () => { isDragging = false; });
+    slider.addEventListener("pointerup", () => { isDragging = false; });
+    slider.addEventListener("pointercancel", () => { isDragging = false; });
   });
 }
 
@@ -501,7 +476,7 @@ function updateVolumeSliderFromRNBO(value) {
 // ================= Button Setup (IDs: b1 ... b8) =================
 
 function setupButtons() {
-  const buttonIds = ["b1", "b2", "b3", "b4", "b5", "b6", "b7", "b8"];
+  const buttonIds = ["b1", "b2", "b3", "b4", "b5", "b6", "b7", "b8", "rndm"];
   buttonIds.forEach(id => {
     const button = document.getElementById(id);
     if (!button) {
