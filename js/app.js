@@ -123,25 +123,28 @@ for (let i = 0; i < satelliteCount; i++) {
 
 // ================= Clock =================
 
+// Stelle sicher, dass dieser Clock nur einmal initialisiert wird!
 const clock = new THREE.Clock();
 
-// ================= Animate Function =================
 function animate() {
   requestAnimationFrame(animate);
-  const time = clock.getElapsedTime();
+  
+  // Nur einmal Delta berechnen
   const delta = clock.getDelta();
+  console.log("delta:", delta); // Debug-Ausgabe
   
   // Update des Hauptobjekts (morphObject) – wie gehabt
   const positions = morphObject.geometry.attributes.position.array;
   const origPositions = morphObject.geometry.userData.origPositions;
   const vertexCount = positions.length / 3;
+  
   for (let i = 0; i < vertexCount; i++) {
     const ix = i * 3;
     const ox = origPositions[ix];
     const oy = origPositions[ix + 1];
     const oz = origPositions[ix + 2];
-    const sinOffset = Math.sin(time + (ox + oy + oz) * currentMorphFrequency);
-    const noiseOffset = currentNoiseFactor * Math.sin(time * 0.5 + (ox - oy + oz));
+    const sinOffset = Math.sin(clock.getElapsedTime() + (ox + oy + oz) * currentMorphFrequency);
+    const noiseOffset = currentNoiseFactor * Math.sin(clock.getElapsedTime() * 0.5 + (ox - oy + oz));
     const offset = sinOffset + noiseOffset;
     positions[ix]     = ox + ox * offset * currentMorphIntensity;
     positions[ix + 1] = oy + oy * offset * currentMorphIntensity;
@@ -150,12 +153,13 @@ function animate() {
   morphObject.geometry.attributes.position.needsUpdate = true;
   morphObject.rotation.x += 0.005;
   morphObject.rotation.y += 0.005;
-  
+
   // Update der Satelliten
   satellites.forEach((satellite, index) => {
     // Aktualisiere den Azimutwinkel individuell
     satellite.userData.angle += satellite.userData.orbitSpeed * delta;
     
+    // Berechne die neue Position anhand der individuellen Parameter
     satellite.position.x = morphObject.position.x + satellite.userData.orbitRadius * Math.cos(satellite.userData.angle) * Math.cos(satellite.userData.inclination);
     satellite.position.y = morphObject.position.y + satellite.userData.orbitRadius * Math.sin(satellite.userData.inclination);
     satellite.position.z = morphObject.position.z + satellite.userData.orbitRadius * Math.sin(satellite.userData.angle) * Math.cos(satellite.userData.inclination);
@@ -163,19 +167,19 @@ function animate() {
     // Eigene Rotation um die eigene Achse
     satellite.rotation.y += satellite.userData.selfRotationSpeed * delta;
     
-    // Debug-Ausgabe für den ersten Satelliten (optional)
+    // Debug-Ausgabe für den ersten Satelliten
     if (index === 0) {
-      // Logge den Winkel, damit du siehst, dass er sich ändert
       console.log("Satellite 0 angle:", satellite.userData.angle.toFixed(2));
     }
   });
-  
-  // Optionale leichte Kamera-Bewegung
-  camera.position.x = Math.sin(time * 0.2) * 0.2;
-  camera.rotation.y = Math.sin(time * 0.3) * 0.1;
-  
+
+  // Optionale Kamera-Bewegung
+  camera.position.x = Math.sin(clock.getElapsedTime() * 0.2) * 0.2;
+  camera.rotation.y = Math.sin(clock.getElapsedTime() * 0.3) * 0.1;
+
   composer.render();
 }
+
 animate();
 
 
