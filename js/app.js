@@ -124,58 +124,49 @@ const clock = new THREE.Clock();
 function animate() {
   requestAnimationFrame(animate);
   const time = clock.getElapsedTime();
+  const delta = clock.getDelta(); // Einmal pro Frame berechnen
 
   // Smoothing: Angleiche alle Zielwerte
   currentMorphIntensity += (targetMorphIntensity - currentMorphIntensity) * smoothingFactor;
   currentMorphFrequency += (targetMorphFrequency - currentMorphFrequency) * smoothingFactor;
   currentNoiseFactor     += (targetNoiseFactor - currentNoiseFactor) * smoothingFactor;
 
-  // Aktualisiere die Scheitelpunkte des Objekts
+  // Aktualisiere die Scheitelpunkte des Hauptobjekts
   const positions = morphObject.geometry.attributes.position.array;
   const origPositions = morphObject.geometry.userData.origPositions;
   const vertexCount = positions.length / 3;
-
   for (let i = 0; i < vertexCount; i++) {
     const ix = i * 3;
     const ox = origPositions[ix];
     const oy = origPositions[ix + 1];
     const oz = origPositions[ix + 2];
-
-    // Kombiniere einen Sinus-Effekt mit einem "Rausch"-Effekt
     const sinOffset = Math.sin(time + (ox + oy + oz) * currentMorphFrequency);
     const noiseOffset = currentNoiseFactor * Math.sin(time * 0.5 + (ox - oy + oz));
     const offset = sinOffset + noiseOffset;
-
     positions[ix]     = ox + ox * offset * currentMorphIntensity;
     positions[ix + 1] = oy + oy * offset * currentMorphIntensity;
     positions[ix + 2] = oz + oz * offset * currentMorphIntensity;
   }
   morphObject.geometry.attributes.position.needsUpdate = true;
 
-  // Drehe das Objekt für einen dynamischen Effekt
+  // Drehe das Hauptobjekt
   morphObject.rotation.x += 0.005;
   morphObject.rotation.y += 0.005;
 
-  // Im Animate-Loop (nach dem Update des morphObject, z.B.)
-  const delta = clock.getDelta();
+  // Aktualisiere die Satelliten (Orbit um das Hauptobjekt)
   satellites.forEach(satellite => {
-    // Aktualisiere den Azimutwinkel
     satellite.userData.angle += orbitSpeed * delta;
-    
-    // Berechne die neue Position mit der festen Neigung:
     satellite.position.x = morphObject.position.x + orbitRadius * Math.cos(satellite.userData.angle) * Math.cos(satellite.userData.inclination);
     satellite.position.y = morphObject.position.y + orbitRadius * Math.sin(satellite.userData.inclination);
     satellite.position.z = morphObject.position.z + orbitRadius * Math.sin(satellite.userData.angle) * Math.cos(satellite.userData.inclination);
   });
 
-
-  // Optionale leichte Kamera-Bewegung (hier kannst du auch statisch bleiben, um den "Schwebe-Effekt" zu verstärken)
+  // Optionale leichte Kamera-Bewegung
   camera.position.x = Math.sin(time * 0.2) * 0.2;
   camera.rotation.y = Math.sin(time * 0.3) * 0.1;
 
   composer.render();
 }
-animate();
 
 // ================= Effekt: Random Planet (seqlight) =================
 
