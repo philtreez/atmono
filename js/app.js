@@ -155,7 +155,7 @@ function animate() {
   // Update der Satelliten
   satellites.forEach(satellite => {
     // Testweise: Setze orbitSpeed und orbitRadius auf feste Werte (zum Debuggen)
-    satellite.userData.orbitSpeed = 1.0;
+    satellite.userData.orbitSpeed = 5.0;
     satellite.userData.orbitRadius = 3.0;
     
     // Aktualisiere den Azimutwinkel individuell
