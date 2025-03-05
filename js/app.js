@@ -124,80 +124,78 @@ for (let i = 0; i < satelliteCount; i++) {
 const clock = new THREE.Clock();
 
 // ================= Animate Function =================
-
 function animate() {
   requestAnimationFrame(animate);
   const time = clock.getElapsedTime();
   const delta = clock.getDelta(); // Einmal pro Frame berechnen
 
-  // Smoothing: Angleiche die morph-Parameter an die Zielwerte
-  currentMorphIntensity += (targetMorphIntensity - currentMorphIntensity) * smoothingFactor;
-  currentMorphFrequency += (targetMorphFrequency - currentMorphFrequency) * smoothingFactor;
-  currentNoiseFactor     += (targetNoiseFactor - currentNoiseFactor) * smoothingFactor;
-
-  // Aktualisiere die Scheitelpunkte des Hauptobjekts (morphObject)
+  // --- Update des Hauptobjekts (morphObject) ---
   const positions = morphObject.geometry.attributes.position.array;
   const origPositions = morphObject.geometry.userData.origPositions;
   const vertexCount = positions.length / 3;
-
+  
   for (let i = 0; i < vertexCount; i++) {
     const ix = i * 3;
     const ox = origPositions[ix];
     const oy = origPositions[ix + 1];
     const oz = origPositions[ix + 2];
-
+    
     // Berechne den Offset mit Sinus- und Noise-Effekt
     const sinOffset = Math.sin(time + (ox + oy + oz) * currentMorphFrequency);
     const noiseOffset = currentNoiseFactor * Math.sin(time * 0.5 + (ox - oy + oz));
     const offset = sinOffset + noiseOffset;
-
+    
     positions[ix]     = ox + ox * offset * currentMorphIntensity;
     positions[ix + 1] = oy + oy * offset * currentMorphIntensity;
     positions[ix + 2] = oz + oz * offset * currentMorphIntensity;
   }
   morphObject.geometry.attributes.position.needsUpdate = true;
-
-  // Drehe das Hauptobjekt leicht
+  
+  // Leichte Rotation des Hauptobjekts
   morphObject.rotation.x += 0.005;
   morphObject.rotation.y += 0.005;
-
-  // Aktualisiere die Satellitenpositionen
+  
+  // --- Update der Satelliten ---
   satellites.forEach(satellite => {
     // Aktualisiere den Azimutwinkel mit der individuellen orbitSpeed
     satellite.userData.angle += satellite.userData.orbitSpeed * delta;
     
-    // Berechne die neue Position basierend auf dem individuellen Orbitradius und der Neigung:
+    // Berechne die neue Position unter Berücksichtigung des individuellen Orbitradius und der Neigung:
     satellite.position.x = morphObject.position.x + satellite.userData.orbitRadius * Math.cos(satellite.userData.angle) * Math.cos(satellite.userData.inclination);
     satellite.position.y = morphObject.position.y + satellite.userData.orbitRadius * Math.sin(satellite.userData.inclination);
     satellite.position.z = morphObject.position.z + satellite.userData.orbitRadius * Math.sin(satellite.userData.angle) * Math.cos(satellite.userData.inclination);
   });
-
-  // Optionale leichte Kamera-Bewegung
+  
+  // Optionale leichte Kamera-Bewegung (schwebender Effekt)
   camera.position.x = Math.sin(time * 0.2) * 0.2;
   camera.rotation.y = Math.sin(time * 0.3) * 0.1;
-
+  
   composer.render();
 }
+
 animate();
+
 
 
 // ================= Effekt: Random Planet (seqlight) =================
 
 function triggerPlanetLight(paramValue) {
-  // paramValue ist 0-8, wobei 0 bedeutet, dass keiner leuchtet.
+  // paramValue: 0 bedeutet keiner, 1-8 bewirken, dass der jeweilige Satellit aufleuchtet.
   if (paramValue <= 0 || paramValue > satellites.length) return;
-  const index = paramValue - 1; // z.B. 1 bedeutet erster Satellit
+  const index = paramValue - 1; // z. B. 1 entspricht dem ersten Satelliten
   const satellite = satellites[index];
   if (!satellite) return;
   
-  // Speichere den Originalwert
+  // Speichere den Originalwert, falls du später den Effekt zurücksetzen möchtest
   const originalEmissiveIntensity = satellite.material.emissiveIntensity;
   
-  // Setze das emissive, damit der Satellit leuchtet
-  satellite.material.emissive.setHex(0xffffff); // weiß
-  satellite.material.emissiveIntensity = 5;       // starker Glow
+  // Setze den emissiven Wert auf weiß und erhöhe die Intensität, sodass der Satellit "aufleuchtet"
+  satellite.material.emissive.setHex(0xffffff);
+  satellite.material.emissiveIntensity = 5;  // hoher Wert für starken Glow
   
-  // Nach 500ms wird der Effekt wieder zurückgesetzt
+  // Optional: Du kannst auch die Größe kurzzeitig ändern oder andere Effekte hinzufügen.
+  
+  // Nach 500 ms wird der Effekt wieder zurückgesetzt
   setTimeout(() => {
     satellite.material.emissiveIntensity = originalEmissiveIntensity;
     satellite.material.emissive.setHex(0x000000);
