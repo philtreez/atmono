@@ -391,6 +391,8 @@ function setupVerticalSliders() {
     sliderContainer.style.width = "30px";
     sliderContainer.style.height = "150px";
     sliderContainer.style.position = "relative";
+    sliderContainer.style.backgroundColor = "#ccc"; // Beispielhintergrund
+    sliderContainer.style.borderRadius = "4px";
     sliderContainer.dataset.value = "0"; // Initialwert 0
     
     // Suche im Container nach einem existierenden Thumb-Div
@@ -406,6 +408,8 @@ function setupVerticalSliders() {
     thumb.style.position = "absolute";
     thumb.style.top = "0px"; // Initial oben
     thumb.style.left = "0px";
+    thumb.style.backgroundColor = "#888"; // Beispiel-Farbe
+    thumb.style.borderRadius = "4px";
     thumb.style.touchAction = "none";
     
     // Variablen zur Steuerung der Drag-Interaktion
