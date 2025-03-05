@@ -180,28 +180,23 @@ animate();
 // ================= Effekt: Random Planet (seqlight) =================
 
 function triggerPlanetLight(paramValue) {
-  // paramValue: 0 bedeutet keiner, 1-8 bewirken, dass der jeweilige Satellit aufleuchtet.
+  // paramValue: 0 bedeutet keiner, 1–8 bewirken, dass der jeweilige Satellit aufleuchtet.
   if (paramValue <= 0 || paramValue > satellites.length) return;
   const index = paramValue - 1; // z. B. 1 entspricht dem ersten Satelliten
   const satellite = satellites[index];
   if (!satellite) return;
   
-  // Speichere den Originalwert, falls du später den Effekt zurücksetzen möchtest
+  // Speichere den Originalwert
   const originalEmissiveIntensity = satellite.material.emissiveIntensity;
   
-  // Setze den emissiven Wert auf weiß und erhöhe die Intensität, sodass der Satellit "aufleuchtet"
-  satellite.material.emissive.setHex(0xffffff);
-  satellite.material.emissiveIntensity = 5;  // hoher Wert für starken Glow
-  
-  // Optional: Du kannst auch die Größe kurzzeitig ändern oder andere Effekte hinzufügen.
+  // Erhöhe kurzzeitig die emissiveIntensity für den Glow-Effekt
+  satellite.material.emissiveIntensity = 5;
   
   // Nach 500 ms wird der Effekt wieder zurückgesetzt
   setTimeout(() => {
     satellite.material.emissiveIntensity = originalEmissiveIntensity;
-    satellite.material.emissive.setHex(0x000000);
   }, 500);
 }
-
 
 function triggerSeqlight() {
   // Erstelle einen größeren "Planeten" als Kugel (z. B. Radius 1.0) und setze ihn auf weiß
