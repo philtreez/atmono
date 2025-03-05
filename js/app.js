@@ -96,7 +96,7 @@ for (let i = 0; i < satelliteCount; i++) {
     color: 0xffffff,
     wireframe: true,
     emissive: 0xffffff,
-    emissiveIntensity: 0.3
+    emissiveIntensity: 0.35
   });
   const satellite = new THREE.Mesh(satGeometry, satMaterial);
   
@@ -195,7 +195,7 @@ function triggerPlanetLight(paramValue) {
   // Nach 500 ms wird der Effekt wieder zurückgesetzt
   setTimeout(() => {
     satellite.material.emissiveIntensity = originalEmissiveIntensity;
-  }, 80);
+  }, 120);
 }
 
 function triggerSeqlight() {
