@@ -534,6 +534,6 @@ function updateButtonFromRNBO(id, value) {
 
 document.addEventListener("DOMContentLoaded", () => {
   setupVolumeSlider();
-  setupRotarySliders();
+  setupVerticalSliders();
   setupButtons();
 });
