@@ -87,8 +87,7 @@ scene.add(morphObject);
 // ================= Satelliten (Orbit um das Hauptobjekt) =================
 const satellites = [];
 const satelliteCount = 8;
-const orbitRadius = 3;   // Abstand zum Hauptobjekt
-const orbitSpeed = 0.5;  // Umlaufgeschwindigkeit (Winkeländerung pro Sekunde)
+// Entferne die globalen orbitRadius und orbitSpeed, da jeder Satellit eigene Werte bekommt
 
 for (let i = 0; i < satelliteCount; i++) {
   // Erstelle einen kleinen Satelliten als Kugel, weiß, im Wireframe-Look
@@ -101,19 +100,24 @@ for (let i = 0; i < satelliteCount; i++) {
   });
   const satellite = new THREE.Mesh(satGeometry, satMaterial);
   
-  // Setze einen Startwinkel (Azimuth) gleichmäßig verteilt
+  // Setze einen Startwinkel (Azimut) gleichmäßig verteilt
   satellite.userData.angle = (i / satelliteCount) * Math.PI * 2;
-  // Weise jedem Satelliten eine zufällige Neigung zu (zum Beispiel zwischen -30° und +30°)
-  satellite.userData.inclination = (Math.random() - 0.5) * (Math.PI / 3); // Bereich: -pi/6 bis pi/6
+  // Weise jedem Satelliten eine zufällige Neigung zu (zwischen -30° und +30°)
+  satellite.userData.inclination = (Math.random() - 0.5) * (Math.PI / 3); // Bereich: -pi/6 bis +pi/6
   
-  // Initiale Positionierung: Wir nutzen eine Kugelkoordinaten-Formel
-  satellite.position.x = morphObject.position.x + orbitRadius * Math.cos(satellite.userData.angle) * Math.cos(satellite.userData.inclination);
-  satellite.position.y = morphObject.position.y + orbitRadius * Math.sin(satellite.userData.inclination);
-  satellite.position.z = morphObject.position.z + orbitRadius * Math.sin(satellite.userData.angle) * Math.cos(satellite.userData.inclination);
+  // Jeder Satellit bekommt einen eigenen Orbitradius (z. B. zwischen 2 und 4) und eine eigene Umlaufgeschwindigkeit (z. B. zwischen 0.2 und 1.0)
+  satellite.userData.orbitRadius = 2 + Math.random() * 2; // 2 bis 4
+  satellite.userData.orbitSpeed = 0.2 + Math.random() * 0.8; // 0.2 bis 1.0
+
+  // Initiale Positionierung mit individuellen Werten
+  satellite.position.x = morphObject.position.x + satellite.userData.orbitRadius * Math.cos(satellite.userData.angle) * Math.cos(satellite.userData.inclination);
+  satellite.position.y = morphObject.position.y + satellite.userData.orbitRadius * Math.sin(satellite.userData.inclination);
+  satellite.position.z = morphObject.position.z + satellite.userData.orbitRadius * Math.sin(satellite.userData.angle) * Math.cos(satellite.userData.inclination);
   
   satellites.push(satellite);
   scene.add(satellite);
 }
+
 
 // ================= Clock =================
 
@@ -126,39 +130,46 @@ function animate() {
   const time = clock.getElapsedTime();
   const delta = clock.getDelta(); // Einmal pro Frame berechnen
 
-  // Smoothing: Angleiche alle Zielwerte
+  // Smoothing: Angleiche die morph-Parameter an die Zielwerte
   currentMorphIntensity += (targetMorphIntensity - currentMorphIntensity) * smoothingFactor;
   currentMorphFrequency += (targetMorphFrequency - currentMorphFrequency) * smoothingFactor;
   currentNoiseFactor     += (targetNoiseFactor - currentNoiseFactor) * smoothingFactor;
 
-  // Aktualisiere die Scheitelpunkte des Hauptobjekts
+  // Aktualisiere die Scheitelpunkte des Hauptobjekts (morphObject)
   const positions = morphObject.geometry.attributes.position.array;
   const origPositions = morphObject.geometry.userData.origPositions;
   const vertexCount = positions.length / 3;
+
   for (let i = 0; i < vertexCount; i++) {
     const ix = i * 3;
     const ox = origPositions[ix];
     const oy = origPositions[ix + 1];
     const oz = origPositions[ix + 2];
+
+    // Berechne den Offset mit Sinus- und Noise-Effekt
     const sinOffset = Math.sin(time + (ox + oy + oz) * currentMorphFrequency);
     const noiseOffset = currentNoiseFactor * Math.sin(time * 0.5 + (ox - oy + oz));
     const offset = sinOffset + noiseOffset;
+
     positions[ix]     = ox + ox * offset * currentMorphIntensity;
     positions[ix + 1] = oy + oy * offset * currentMorphIntensity;
     positions[ix + 2] = oz + oz * offset * currentMorphIntensity;
   }
   morphObject.geometry.attributes.position.needsUpdate = true;
 
-  // Drehe das Hauptobjekt
+  // Drehe das Hauptobjekt leicht
   morphObject.rotation.x += 0.005;
   morphObject.rotation.y += 0.005;
 
-  // Aktualisiere die Satelliten (Orbit um das Hauptobjekt)
+  // Aktualisiere die Satellitenpositionen
   satellites.forEach(satellite => {
-    satellite.userData.angle += orbitSpeed * delta;
-    satellite.position.x = morphObject.position.x + orbitRadius * Math.cos(satellite.userData.angle) * Math.cos(satellite.userData.inclination);
-    satellite.position.y = morphObject.position.y + orbitRadius * Math.sin(satellite.userData.inclination);
-    satellite.position.z = morphObject.position.z + orbitRadius * Math.sin(satellite.userData.angle) * Math.cos(satellite.userData.inclination);
+    // Aktualisiere den Azimutwinkel mit der individuellen orbitSpeed
+    satellite.userData.angle += satellite.userData.orbitSpeed * delta;
+    
+    // Berechne die neue Position basierend auf dem individuellen Orbitradius und der Neigung:
+    satellite.position.x = morphObject.position.x + satellite.userData.orbitRadius * Math.cos(satellite.userData.angle) * Math.cos(satellite.userData.inclination);
+    satellite.position.y = morphObject.position.y + satellite.userData.orbitRadius * Math.sin(satellite.userData.inclination);
+    satellite.position.z = morphObject.position.z + satellite.userData.orbitRadius * Math.sin(satellite.userData.angle) * Math.cos(satellite.userData.inclination);
   });
 
   // Optionale leichte Kamera-Bewegung
@@ -167,8 +178,8 @@ function animate() {
 
   composer.render();
 }
-
 animate();
+
 
 // ================= Effekt: Random Planet (seqlight) =================
 
