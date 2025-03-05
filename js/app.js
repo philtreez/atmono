@@ -168,6 +168,8 @@ function animate() {
   composer.render();
 }
 
+animate();
+
 // ================= Effekt: Random Planet (seqlight) =================
 
 function triggerPlanetLight(paramValue) {
