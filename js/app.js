@@ -136,12 +136,21 @@ animate();
 // ================= Effekt: Random Planet (seqlight) =================
 
 function triggerSeqlight() {
-  // Erstelle einen "Planeten" als Kugel
-  const planetGeometry = new THREE.SphereGeometry(0.5, 32, 32);
-  const planetMaterial = new THREE.MeshBasicMaterial({ color: 0xffaa00 });
+  // Erstelle einen größeren "Planeten" als Kugel (z. B. Radius 1.0) und setze ihn auf weiß
+  const planetGeometry = new THREE.SphereGeometry(1.0, 32, 32);
+  
+  // Verwende ein Material mit emissiven Eigenschaften, um einen Glow-Effekt zu fördern
+  const planetMaterial = new THREE.MeshStandardMaterial({
+    color: 0xffffff,
+    emissive: 0xffffff,
+    emissiveIntensity: 2, // Erhöht den Leuchteffekt
+    roughness: 0.1,
+    metalness: 0.5
+  });
+  
   const planetMesh = new THREE.Mesh(planetGeometry, planetMaterial);
 
-  // Platziere den Planeten zufällig im Raum (z. B. im Bereich -100 bis 100)
+  // Platziere den Planeten zufällig im Raum (z. B. im Bereich -100 bis 100)
   planetMesh.position.x = (Math.random() - 0.5) * 200;
   planetMesh.position.y = (Math.random() - 0.5) * 200;
   planetMesh.position.z = (Math.random() - 0.5) * 200;
