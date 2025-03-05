@@ -376,54 +376,74 @@ function updateLights(outport, value) {
 
 // ================= Rotary Slider Setup (IDs: slider-s1 ... slider-s8) =================
 
-function setupRotarySliders() {
+function setupVerticalSliders() {
   const sliderIds = ["s1", "s2", "s3", "s4", "s5", "s6", "s7", "s8"];
-  const sensitivity = 0.005; // Änderung pro Pixel
   
   sliderIds.forEach(id => {
-    const slider = document.getElementById("slider-" + id);
-    if (!slider) {
-      console.warn("Slider element nicht gefunden:", "slider-" + id);
+    // Hole den Container, der als Hintergrund dient (aus Webflow erstellt)
+    const sliderContainer = document.getElementById("slider-" + id);
+    if (!sliderContainer) {
+      console.warn("Slider container nicht gefunden:", "slider-" + id);
       return;
     }
     
-    slider.style.width = "50px";
-    slider.style.height = "50px";
-    slider.style.borderRadius = "50%";
-    slider.style.background = "url('https://cdn.prod.website-files.com/67c27c3b4c668c9f3ca429ed/67c5139a38c39d6a75bac9ac_silderpoint60_60.png') center/cover no-repeat";
-    slider.style.transform = "rotate(0deg)";
-    slider.style.touchAction = "none";
+    // Stelle sicher, dass der Container die richtigen Styles hat (falls nicht, kannst du sie auch im JS setzen)
+    sliderContainer.style.width = "30px";
+    sliderContainer.style.height = "150px";
+    sliderContainer.style.position = "relative";
+    sliderContainer.dataset.value = "0"; // Initialwert 0
     
-    slider.dataset.value = "0";
+    // Suche im Container nach einem existierenden Thumb-Div
+    const thumb = sliderContainer.querySelector(".thumb");
+    if (!thumb) {
+      console.warn("Thumb div nicht gefunden in:", "slider-" + id);
+      return;
+    }
     
+    // Style den Thumb (falls nötig – du kannst diese auch in Webflow definieren)
+    thumb.style.width = "30px";
+    thumb.style.height = "30px";
+    thumb.style.position = "absolute";
+    thumb.style.top = "0px"; // Initial oben
+    thumb.style.left = "0px";
+    thumb.style.touchAction = "none";
+    
+    // Variablen zur Steuerung der Drag-Interaktion
     let isDragging = false;
-    let startX = 0;
     let startY = 0;
     let initialValue = 0;
     
-    slider.addEventListener("pointerdown", (e) => {
+    // Beim Pointer-Down am Thumb: Drag starten
+    thumb.addEventListener("pointerdown", (e) => {
       isDragging = true;
-      startX = e.clientX;
       startY = e.clientY;
-      initialValue = parseFloat(slider.dataset.value);
-      slider.setPointerCapture(e.pointerId);
+      initialValue = parseFloat(sliderContainer.dataset.value);
+      thumb.setPointerCapture(e.pointerId);
     });
     
-    slider.addEventListener("pointermove", (e) => {
+    // Beim Pointer-Move: Verschiebe den Thumb vertikal
+    thumb.addEventListener("pointermove", (e) => {
       if (!isDragging) return;
-      const dx = e.clientX - startX;
+      
       const dy = e.clientY - startY;
-      const delta = (dx - dy) * sensitivity;
+      // Berechne den verfügbaren Bewegungsbereich (Container-Höhe minus Thumb-Höhe)
+      const travel = sliderContainer.clientHeight - thumb.clientHeight;
+      // Berechne den neuen Wert (zwischen 0 und 1)
+      let delta = dy / travel;
       let newValue = initialValue + delta;
       newValue = Math.max(0, Math.min(newValue, 1));
-      slider.dataset.value = newValue.toString();
-      const degrees = newValue * 270;
-      slider.style.transform = `rotate(${degrees}deg)`;
+      sliderContainer.dataset.value = newValue.toString();
+      
+      // Setze die neue Position des Thumbs
+      thumb.style.top = (newValue * travel) + "px";
+      
+      // Sende den neuen Wert an RNBO (oder an eine andere Steuerungslogik)
       sendValueToRNBO(id, newValue);
     });
     
-    slider.addEventListener("pointerup", () => { isDragging = false; });
-    slider.addEventListener("pointercancel", () => { isDragging = false; });
+    // Beende das Dragging
+    thumb.addEventListener("pointerup", () => { isDragging = false; });
+    thumb.addEventListener("pointercancel", () => { isDragging = false; });
   });
 }
 
