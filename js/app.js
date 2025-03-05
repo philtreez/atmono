@@ -88,27 +88,32 @@ scene.add(morphObject);
 
 const satellites = [];
 const satelliteCount = 8;
-const orbitRadius = 3;   // Abstand zum Hauptobjekt (anpassen, wie gewünscht)
+const orbitRadius = 3;   // Abstand zum Hauptobjekt
 const orbitSpeed = 0.5;  // Umlaufgeschwindigkeit (Winkeländerung pro Sekunde)
 
 for (let i = 0; i < satelliteCount; i++) {
-  // Erstelle einen kleinen Satelliten als Kugel (hier gelb)
+  // Erstelle einen kleinen Satelliten als Kugel, weiß, im Wireframe-Look
   const satGeometry = new THREE.SphereGeometry(0.2, 16, 16);
-  const satMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff, wireframe: true });
+  // Verwende MeshStandardMaterial, damit emissive genutzt werden kann
+  const satMaterial = new THREE.MeshStandardMaterial({
+    color: 0xffffff,
+    wireframe: true,
+    emissive: 0x000000,      // standardmäßig kein Glow
+    emissiveIntensity: 0     // 0 = aus
+  });
   const satellite = new THREE.Mesh(satGeometry, satMaterial);
   
-  // Setze einen individuellen Startwinkel (gleichmäßig verteilt)
+  // Setze einen Startwinkel (gleichmäßig verteilt)
   satellite.userData.angle = (i / satelliteCount) * Math.PI * 2;
   
-  // Initiale Positionierung
+  // Initiale Positionierung relativ zum Hauptobjekt (hier morphObject)
   satellite.position.x = morphObject.position.x + orbitRadius * Math.cos(satellite.userData.angle);
   satellite.position.z = morphObject.position.z + orbitRadius * Math.sin(satellite.userData.angle);
-  satellite.position.y = morphObject.position.y; // gleiche Höhe wie das Hauptobjekt
-
+  satellite.position.y = morphObject.position.y; // gleiche Höhe
+  
   satellites.push(satellite);
   scene.add(satellite);
 }
-
 
 // ================= Clock =================
 
@@ -171,6 +176,28 @@ function animate() {
 animate();
 
 // ================= Effekt: Random Planet (seqlight) =================
+
+function triggerPlanetLight(paramValue) {
+  // paramValue ist 0-8, wobei 0 bedeutet, dass keiner leuchtet.
+  if (paramValue <= 0 || paramValue > satellites.length) return;
+  const index = paramValue - 1; // z.B. 1 bedeutet erster Satellit
+  const satellite = satellites[index];
+  if (!satellite) return;
+  
+  // Speichere den Originalwert
+  const originalEmissiveIntensity = satellite.material.emissiveIntensity;
+  
+  // Setze das emissive, damit der Satellit leuchtet
+  satellite.material.emissive.setHex(0xffffff); // weiß
+  satellite.material.emissiveIntensity = 5;       // starker Glow
+  
+  // Nach 500ms wird der Effekt wieder zurückgesetzt
+  setTimeout(() => {
+    satellite.material.emissiveIntensity = originalEmissiveIntensity;
+    satellite.material.emissive.setHex(0x000000);
+  }, 500);
+}
+
 
 function triggerSeqlight() {
   // Erstelle einen größeren "Planeten" als Kugel (z. B. Radius 1.0) und setze ihn auf weiß
@@ -313,6 +340,11 @@ function attachRNBOMessages(device) {
         targetMorphFrequency = parseFloat(param.value);
         console.log(`Target morph frequency updated: ${targetMorphFrequency}`);
       }
+      if (param.id === "planetlight") {
+        const value = parseInt(param.value);
+        triggerPlanetLight(value);
+        console.log("planetlight ausgelöst für Satellit:", value);
+      }
       if (param.id === "noiseFactor") {
         targetNoiseFactor = parseFloat(param.value);
         console.log(`Target noise factor updated: ${targetNoiseFactor}`);
@@ -348,6 +380,11 @@ function attachRNBOMessages(device) {
       if (ev.tag === "morphFrequency") {
         targetMorphFrequency = parseFloat(ev.payload);
         console.log(`Target morph frequency updated: ${targetMorphFrequency}`);
+      }
+      if (ev.tag === "planetlight") {
+        const value = parseInt(ev.payload);
+        triggerPlanetLight(value);
+        console.log("planetlight ausgelöst für Satellit:", value);
       }
       if (ev.tag === "noiseFactor") {
         targetNoiseFactor = parseFloat(ev.payload);
