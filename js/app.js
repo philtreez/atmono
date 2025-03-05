@@ -85,30 +85,29 @@ const morphObject = new THREE.Mesh(geometry, material);
 scene.add(morphObject);
 
 // ================= Satelliten (Orbit um das Hauptobjekt) =================
-const satellites = [];
-const satelliteCount = 8;
-// Entferne die globalen orbitRadius und orbitSpeed, da jeder Satellit eigene Werte bekommt
-
 for (let i = 0; i < satelliteCount; i++) {
   // Erstelle einen kleinen Satelliten als Kugel, weiß, im Wireframe-Look
   const satGeometry = new THREE.SphereGeometry(0.2, 16, 16);
   const satMaterial = new THREE.MeshStandardMaterial({
     color: 0xffffff,
     wireframe: true,
-    emissive: 0xffffff,
-    emissiveIntensity: 0.35
+    emissive: 0xffffff,         // Damit er standardmäßig weiß erscheint
+    emissiveIntensity: 0.2      // Leichter Glow-Effekt
   });
   const satellite = new THREE.Mesh(satGeometry, satMaterial);
   
   // Setze einen Startwinkel (Azimut) gleichmäßig verteilt
   satellite.userData.angle = (i / satelliteCount) * Math.PI * 2;
-  // Weise jedem Satelliten eine zufällige Neigung zu (zwischen -30° und +30°)
-  satellite.userData.inclination = (Math.random() - 0.5) * (Math.PI / 3); // Bereich: -pi/6 bis +pi/6
+  // Zufällige Neigung zwischen -30° und +30°
+  satellite.userData.inclination = (Math.random() - 0.5) * (Math.PI / 3);
   
-  // Jeder Satellit bekommt einen eigenen Orbitradius (z. B. zwischen 2 und 4) und eine eigene Umlaufgeschwindigkeit (z. B. zwischen 0.2 und 1.0)
-  satellite.userData.orbitRadius = 2 + Math.random() * 2; // 2 bis 4
-  satellite.userData.orbitSpeed = 0.2 + Math.random() * 0.8; // 0.2 bis 1.0
-
+  // Jeder Satellit bekommt einen eigenen Orbitradius (2 bis 4) und orbitSpeed (0.2 bis 1.0)
+  satellite.userData.orbitRadius = 2 + Math.random() * 2;
+  satellite.userData.orbitSpeed = 0.2 + Math.random() * 0.8;
+  
+  // Jeder Satellit dreht sich auch um die eigene Achse – zufällige Drehgeschwindigkeit (z. B. 0.2 bis 0.7)
+  satellite.userData.selfRotationSpeed = 0.2 + Math.random() * 0.5;
+  
   // Initiale Positionierung mit individuellen Werten
   satellite.position.x = morphObject.position.x + satellite.userData.orbitRadius * Math.cos(satellite.userData.angle) * Math.cos(satellite.userData.inclination);
   satellite.position.y = morphObject.position.y + satellite.userData.orbitRadius * Math.sin(satellite.userData.inclination);
@@ -119,6 +118,7 @@ for (let i = 0; i < satelliteCount; i++) {
 }
 
 
+
 // ================= Clock =================
 
 const clock = new THREE.Clock();
@@ -127,20 +127,18 @@ const clock = new THREE.Clock();
 function animate() {
   requestAnimationFrame(animate);
   const time = clock.getElapsedTime();
-  const delta = clock.getDelta(); // Einmal pro Frame berechnen
+  const delta = clock.getDelta(); // Zeit seit letztem Frame
 
   // --- Update des Hauptobjekts (morphObject) ---
   const positions = morphObject.geometry.attributes.position.array;
   const origPositions = morphObject.geometry.userData.origPositions;
   const vertexCount = positions.length / 3;
-  
   for (let i = 0; i < vertexCount; i++) {
     const ix = i * 3;
     const ox = origPositions[ix];
     const oy = origPositions[ix + 1];
     const oz = origPositions[ix + 2];
     
-    // Berechne den Offset mit Sinus- und Noise-Effekt
     const sinOffset = Math.sin(time + (ox + oy + oz) * currentMorphFrequency);
     const noiseOffset = currentNoiseFactor * Math.sin(time * 0.5 + (ox - oy + oz));
     const offset = sinOffset + noiseOffset;
@@ -151,31 +149,30 @@ function animate() {
   }
   morphObject.geometry.attributes.position.needsUpdate = true;
   
-  // Leichte Rotation des Hauptobjekts
   morphObject.rotation.x += 0.005;
   morphObject.rotation.y += 0.005;
   
   // --- Update der Satelliten ---
   satellites.forEach(satellite => {
-    // Aktualisiere den Azimutwinkel mit der individuellen orbitSpeed
+    // Aktualisiere den orbitalen Azimutwinkel individuell
     satellite.userData.angle += satellite.userData.orbitSpeed * delta;
     
-    // Berechne die neue Position unter Berücksichtigung des individuellen Orbitradius und der Neigung:
+    // Berechne die neue Position in der Umlaufbahn
     satellite.position.x = morphObject.position.x + satellite.userData.orbitRadius * Math.cos(satellite.userData.angle) * Math.cos(satellite.userData.inclination);
     satellite.position.y = morphObject.position.y + satellite.userData.orbitRadius * Math.sin(satellite.userData.inclination);
     satellite.position.z = morphObject.position.z + satellite.userData.orbitRadius * Math.sin(satellite.userData.angle) * Math.cos(satellite.userData.inclination);
+    
+    // Satellit dreht sich um die eigene Achse
+    satellite.rotation.y += satellite.userData.selfRotationSpeed * delta;
   });
   
-  // Optionale leichte Kamera-Bewegung (schwebender Effekt)
+  // Optionale Kamera-Bewegung
   camera.position.x = Math.sin(time * 0.2) * 0.2;
   camera.rotation.y = Math.sin(time * 0.3) * 0.1;
   
   composer.render();
 }
-
 animate();
-
-
 
 // ================= Effekt: Random Planet (seqlight) =================
 
