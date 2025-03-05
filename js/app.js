@@ -85,7 +85,6 @@ const morphObject = new THREE.Mesh(geometry, material);
 scene.add(morphObject);
 
 // ================= Satelliten (Orbit um das Hauptobjekt) =================
-
 const satellites = [];
 const satelliteCount = 8;
 const orbitRadius = 3;   // Abstand zum Hauptobjekt
@@ -94,22 +93,23 @@ const orbitSpeed = 0.5;  // Umlaufgeschwindigkeit (Winkeländerung pro Sekunde)
 for (let i = 0; i < satelliteCount; i++) {
   // Erstelle einen kleinen Satelliten als Kugel, weiß, im Wireframe-Look
   const satGeometry = new THREE.SphereGeometry(0.2, 16, 16);
-  // Verwende MeshStandardMaterial, damit emissive genutzt werden kann
   const satMaterial = new THREE.MeshStandardMaterial({
     color: 0xffffff,
     wireframe: true,
-    emissive: 0x000000,      // standardmäßig kein Glow
-    emissiveIntensity: 0     // 0 = aus
+    emissive: 0x000000,
+    emissiveIntensity: 0
   });
   const satellite = new THREE.Mesh(satGeometry, satMaterial);
   
-  // Setze einen Startwinkel (gleichmäßig verteilt)
+  // Setze einen Startwinkel (Azimuth) gleichmäßig verteilt
   satellite.userData.angle = (i / satelliteCount) * Math.PI * 2;
+  // Weise jedem Satelliten eine zufällige Neigung zu (zum Beispiel zwischen -30° und +30°)
+  satellite.userData.inclination = (Math.random() - 0.5) * (Math.PI / 3); // Bereich: -pi/6 bis pi/6
   
-  // Initiale Positionierung relativ zum Hauptobjekt (hier morphObject)
-  satellite.position.x = morphObject.position.x + orbitRadius * Math.cos(satellite.userData.angle);
-  satellite.position.z = morphObject.position.z + orbitRadius * Math.sin(satellite.userData.angle);
-  satellite.position.y = morphObject.position.y; // gleiche Höhe
+  // Initiale Positionierung: Wir nutzen eine Kugelkoordinaten-Formel
+  satellite.position.x = morphObject.position.x + orbitRadius * Math.cos(satellite.userData.angle) * Math.cos(satellite.userData.inclination);
+  satellite.position.y = morphObject.position.y + orbitRadius * Math.sin(satellite.userData.inclination);
+  satellite.position.z = morphObject.position.z + orbitRadius * Math.sin(satellite.userData.angle) * Math.cos(satellite.userData.inclination);
   
   satellites.push(satellite);
   scene.add(satellite);
@@ -156,16 +156,18 @@ function animate() {
   morphObject.rotation.x += 0.005;
   morphObject.rotation.y += 0.005;
 
-  // Aktualisiere die Position der Satelliten (Orbit)
-  const delta = clock.getDelta(); // Zeit seit letztem Frame (für gleichmäßige Bewegung)
+  // Im Animate-Loop (nach dem Update des morphObject, z.B.)
+  const delta = clock.getDelta();
   satellites.forEach(satellite => {
-    // Aktualisiere den Winkel
+    // Aktualisiere den Azimutwinkel
     satellite.userData.angle += orbitSpeed * delta;
-    // Setze die Position relativ zum Hauptobjekt (morphObject)
-    satellite.position.x = morphObject.position.x + orbitRadius * Math.cos(satellite.userData.angle);
-    satellite.position.z = morphObject.position.z + orbitRadius * Math.sin(satellite.userData.angle);
-    satellite.position.y = morphObject.position.y; // gleiche Höhe
+    
+    // Berechne die neue Position mit der festen Neigung:
+    satellite.position.x = morphObject.position.x + orbitRadius * Math.cos(satellite.userData.angle) * Math.cos(satellite.userData.inclination);
+    satellite.position.y = morphObject.position.y + orbitRadius * Math.sin(satellite.userData.inclination);
+    satellite.position.z = morphObject.position.z + orbitRadius * Math.sin(satellite.userData.angle) * Math.cos(satellite.userData.inclination);
   });
+
 
   // Optionale leichte Kamera-Bewegung (hier kannst du auch statisch bleiben, um den "Schwebe-Effekt" zu verstärken)
   camera.position.x = Math.sin(time * 0.2) * 0.2;
