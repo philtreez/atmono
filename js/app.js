@@ -177,8 +177,8 @@ function animate() {
   });
 
   // Optionale Kamera-Bewegung
-  camera.position.x = Math.sin(clock.getElapsedTime() * 0.2) * 0.05;
-  camera.rotation.y = Math.sin(clock.getElapsedTime() * 0.21) * 0.1;
+  camera.position.x = Math.sin(clock.getElapsedTime() * 0.2) * 0.2;
+  camera.rotation.y = Math.sin(clock.getElapsedTime() * 0.3) * 0.1;
 
   composer.render();
 }
