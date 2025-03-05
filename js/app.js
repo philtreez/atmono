@@ -109,7 +109,7 @@ for (let i = 0; i < satelliteCount; i++) {
   // Orbit-Parameter:
   satellite.userData.orbitRadius = 2 + Math.random() * 2; // z. B. 2 bis 4
   // Reduzierter Geschwindigkeitsbereich, z. B. zwischen 0.2 und 1.0
-  satellite.userData.orbitSpeed = 0.2 + Math.random() * 0.8;
+  satellite.userData.orbitSpeed = 0.8 + Math.random() * 0.8;
   
   // Eigene Rotation um die eigene Achse
   satellite.userData.selfRotationSpeed = 0.2 + Math.random() * 0.5;
