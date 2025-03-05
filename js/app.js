@@ -239,16 +239,23 @@ function flushParameterQueue() {
 // ================= Steuerung: RNBO Nachrichten =================
 
 function updateSliderFromRNBO(id, value) {
-  const slider = document.getElementById("slider-" + id);
-  if (slider) {
-    slider.dataset.value = value;
-    const degrees = value * 270; // 0-1 entspricht 0 bis 270° Drehung
-    slider.style.transform = `rotate(${degrees}deg)`;
+  const sliderContainer = document.getElementById("slider-" + id);
+  if (sliderContainer) {
+    // Speichere den neuen Wert
+    sliderContainer.dataset.value = value;
+    // Suche den Thumb im Container
+    const thumb = sliderContainer.querySelector(".thumb");
+    if (thumb) {
+      // Berechne den verfügbaren vertikalen Bewegungsbereich
+      const travel = sliderContainer.clientHeight - thumb.clientHeight;
+      // Setze den Thumb vertikal entsprechend dem Wert (0 bis 1)
+      thumb.style.top = (value * travel) + "px";
+    }
   }
 }
 
 function attachRNBOMessages(device) {
-  const controlIds = ["s1", "s2", "s3", "s4", "s5", "s6", "s7", "s8", "vol", "b1", "b2", "b3", "b4", "b5", "b6", "b7", "b8"];
+  const controlIds = ["s1", "s2", "s3", "s4", "s5", "s6", "s7", "s8", "vol", "b1", "b2", "b3", "b4", "b5", "b6", "b7", "b8", "rndm"];
 
   if (device.parameterChangeEvent) {
     device.parameterChangeEvent.subscribe(param => {
