@@ -334,31 +334,9 @@ function attachRNBOMessages(device) {
 function attachOutports(device) {
   device.messageEvent.subscribe(ev => {
     // Handle grider und glitchy wie bisher:
-    if (ev.tag === "grider" && parseInt(ev.payload) === 1) {
-      const randomIndex = Math.floor(Math.random() * tunnelPlanes.length);
-      const randomPlane = tunnelPlanes[randomIndex];
-      const edges = new THREE.EdgesGeometry(gridGeometry);
-      const lineMaterial = new THREE.LineBasicMaterial({
-        color: 0x00ff82,
-        linewidth: 40,
-        transparent: true,
-        opacity: 0.65,
-        blending: THREE.AdditiveBlending,
-        depthTest: false,
-        depthWrite: false
-      });
-      const thickOutline = new THREE.LineSegments(edges, lineMaterial);
-      thickOutline.scale.set(1, 1, 1);
-      randomPlane.add(thickOutline);
-      setTimeout(() => {
-        randomPlane.remove(thickOutline);
-      }, 100);
-    }
-    
     if (ev.tag === "glitchy") {
       glitchPass.enabled = (parseInt(ev.payload) === 1);
     }
-    
     // Hier prüfen wir, ob der Outport für Light-Daten ist
     if (ev.tag.startsWith("light1") || ev.tag.startsWith("light2")) {
       // updateLights erwartet den Outport-Namen (z. B. "light1" oder "light2") und einen Wert (0-8)
@@ -398,7 +376,6 @@ function setupVerticalSliders() {
     sliderContainer.style.width = "30px";
     sliderContainer.style.height = "150px";
     sliderContainer.style.position = "relative";
-    sliderContainer.style.backgroundColor = "#ccc"; // Beispielhintergrund
     sliderContainer.style.borderRadius = "4px";
     sliderContainer.dataset.value = "0"; // Initialwert 0
     
@@ -415,7 +392,6 @@ function setupVerticalSliders() {
     thumb.style.position = "absolute";
     thumb.style.top = "0px"; // Initial oben
     thumb.style.left = "0px";
-    thumb.style.backgroundColor = "#888"; // Beispiel-Farbe
     thumb.style.borderRadius = "4px";
     thumb.style.touchAction = "none";
     
@@ -507,7 +483,7 @@ function updateVolumeSliderFromRNBO(value) {
 // ================= Button Setup (IDs: b1 ... b8) =================
 
 function setupButtons() {
-  const buttonIds = ["b1", "b2", "b3", "b4", "b5", "b6", "b7", "b8"];
+  const buttonIds = ["b1", "b2", "b3", "b4", "b5", "b6", "b7", "b8", "rndm"];
   buttonIds.forEach(id => {
     const button = document.getElementById(id);
     if (!button) {
