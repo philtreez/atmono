@@ -500,7 +500,7 @@ function updateVolumeSliderFromRNBO(value) {
 // ================= Button Setup (IDs: b1 ... b8) =================
 
 function setupButtons() {
-  const buttonIds = ["b1", "b2", "b3", "b4", "b5", "b6", "b7", "b8", "rndm"];
+  const buttonIds = ["b1", "b2", "b3", "b4", "b5", "b6", "b7", "b8"];
   buttonIds.forEach(id => {
     const button = document.getElementById(id);
     if (!button) {
