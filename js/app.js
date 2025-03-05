@@ -84,6 +84,32 @@ const material = new THREE.MeshBasicMaterial({
 const morphObject = new THREE.Mesh(geometry, material);
 scene.add(morphObject);
 
+// ================= Satelliten (Orbit um das Hauptobjekt) =================
+
+const satellites = [];
+const satelliteCount = 8;
+const orbitRadius = 3;   // Abstand zum Hauptobjekt (anpassen, wie gewünscht)
+const orbitSpeed = 0.5;  // Umlaufgeschwindigkeit (Winkeländerung pro Sekunde)
+
+for (let i = 0; i < satelliteCount; i++) {
+  // Erstelle einen kleinen Satelliten als Kugel (hier gelb)
+  const satGeometry = new THREE.SphereGeometry(0.2, 16, 16);
+  const satMaterial = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+  const satellite = new THREE.Mesh(satGeometry, satMaterial);
+  
+  // Setze einen individuellen Startwinkel (gleichmäßig verteilt)
+  satellite.userData.angle = (i / satelliteCount) * Math.PI * 2;
+  
+  // Initiale Positionierung
+  satellite.position.x = morphObject.position.x + orbitRadius * Math.cos(satellite.userData.angle);
+  satellite.position.z = morphObject.position.z + orbitRadius * Math.sin(satellite.userData.angle);
+  satellite.position.y = morphObject.position.y; // gleiche Höhe wie das Hauptobjekt
+
+  satellites.push(satellite);
+  scene.add(satellite);
+}
+
+
 // ================= Clock =================
 
 const clock = new THREE.Clock();
@@ -124,6 +150,17 @@ function animate() {
   // Drehe das Objekt für einen dynamischen Effekt
   morphObject.rotation.x += 0.005;
   morphObject.rotation.y += 0.005;
+
+  // Aktualisiere die Position der Satelliten (Orbit)
+  const delta = clock.getDelta(); // Zeit seit letztem Frame (für gleichmäßige Bewegung)
+  satellites.forEach(satellite => {
+    // Aktualisiere den Winkel
+    satellite.userData.angle += orbitSpeed * delta;
+    // Setze die Position relativ zum Hauptobjekt (morphObject)
+    satellite.position.x = morphObject.position.x + orbitRadius * Math.cos(satellite.userData.angle);
+    satellite.position.z = morphObject.position.z + orbitRadius * Math.sin(satellite.userData.angle);
+    satellite.position.y = morphObject.position.y; // gleiche Höhe
+  });
 
   // Optionale leichte Kamera-Bewegung (hier kannst du auch statisch bleiben, um den "Schwebe-Effekt" zu verstärken)
   camera.position.x = Math.sin(time * 0.5) * 0.5;
