@@ -85,6 +85,10 @@ const morphObject = new THREE.Mesh(geometry, material);
 scene.add(morphObject);
 
 // ================= Satelliten (Orbit um das Hauptobjekt) =================
+const satellites = [];
+const satelliteCount = 8;
+// Entferne die globalen orbitRadius und orbitSpeed, da jeder Satellit eigene Werte bekommt
+
 for (let i = 0; i < satelliteCount; i++) {
   // Erstelle einen kleinen Satelliten als Kugel, weiß, im Wireframe-Look
   const satGeometry = new THREE.SphereGeometry(0.2, 16, 16);
@@ -116,8 +120,6 @@ for (let i = 0; i < satelliteCount; i++) {
   satellites.push(satellite);
   scene.add(satellite);
 }
-
-
 
 // ================= Clock =================
 
@@ -173,6 +175,7 @@ function animate() {
   composer.render();
 }
 animate();
+
 
 // ================= Effekt: Random Planet (seqlight) =================
 
