@@ -94,7 +94,7 @@ const orbitSpeed = 0.5;  // Umlaufgeschwindigkeit (Winkeländerung pro Sekunde)
 for (let i = 0; i < satelliteCount; i++) {
   // Erstelle einen kleinen Satelliten als Kugel (hier gelb)
   const satGeometry = new THREE.SphereGeometry(0.2, 16, 16);
-  const satMaterial = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+  const satMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff, wireframe: true });
   const satellite = new THREE.Mesh(satGeometry, satMaterial);
   
   // Setze einen individuellen Startwinkel (gleichmäßig verteilt)
@@ -163,7 +163,7 @@ function animate() {
   });
 
   // Optionale leichte Kamera-Bewegung (hier kannst du auch statisch bleiben, um den "Schwebe-Effekt" zu verstärken)
-  camera.position.x = Math.sin(time * 0.5) * 0.5;
+  camera.position.x = Math.sin(time * 0.2) * 0.2;
   camera.rotation.y = Math.sin(time * 0.3) * 0.1;
 
   composer.render();
