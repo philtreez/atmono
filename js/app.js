@@ -466,7 +466,7 @@ function setupVerticalSliders() {
     
     // Stelle sicher, dass der Container die richtigen Styles hat (falls nicht, kannst du sie auch im JS setzen)
     sliderContainer.style.width = "30px";
-    sliderContainer.style.height = "150px";
+    sliderContainer.style.height = "130px";
     sliderContainer.style.position = "relative";
     sliderContainer.style.borderRadius = "4px";
     sliderContainer.dataset.value = "0"; // Initialwert 0
@@ -480,7 +480,7 @@ function setupVerticalSliders() {
     
     // Style den Thumb (falls nötig – du kannst diese auch in Webflow definieren)
     thumb.style.width = "30px";
-    thumb.style.height = "30px";
+    thumb.style.height = "13px";
     thumb.style.position = "absolute";
     thumb.style.top = "0px"; // Initial oben
     thumb.style.left = "0px";
