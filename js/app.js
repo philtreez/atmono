@@ -129,6 +129,8 @@ function animate() {
   requestAnimationFrame(animate);
   const time = clock.getElapsedTime();
   const delta = clock.getDelta();
+  // Debug: Zeige delta an
+  // console.log("delta:", delta);
 
   // Update des Hauptobjekts (morphObject) – unverändert
   const positions = morphObject.geometry.attributes.position.array;
@@ -152,9 +154,14 @@ function animate() {
 
   // Update der Satelliten
   satellites.forEach(satellite => {
+    // Testweise: Setze orbitSpeed und orbitRadius auf feste Werte (zum Debuggen)
+    satellite.userData.orbitSpeed = 1.0;
+    satellite.userData.orbitRadius = 3.0;
+    
     // Aktualisiere den Azimutwinkel individuell
     satellite.userData.angle += satellite.userData.orbitSpeed * delta;
     
+    // Berechne die neue Position mit den individuellen Parametern
     satellite.position.x = morphObject.position.x + satellite.userData.orbitRadius * Math.cos(satellite.userData.angle) * Math.cos(satellite.userData.inclination);
     satellite.position.y = morphObject.position.y + satellite.userData.orbitRadius * Math.sin(satellite.userData.inclination);
     satellite.position.z = morphObject.position.z + satellite.userData.orbitRadius * Math.sin(satellite.userData.angle) * Math.cos(satellite.userData.inclination);
@@ -163,13 +170,15 @@ function animate() {
     satellite.rotation.y += satellite.userData.selfRotationSpeed * delta;
   });
 
-  // Optionale Kamera-Bewegung
+  // Optionale leichte Kamera-Bewegung
   camera.position.x = Math.sin(time * 0.2) * 0.2;
   camera.rotation.y = Math.sin(time * 0.3) * 0.1;
 
   composer.render();
 }
+
 animate();
+
 
 
 // ================= Effekt: Random Planet (seqlight) =================
