@@ -91,7 +91,7 @@ const satelliteCount = 8;
 
 for (let i = 0; i < satelliteCount; i++) {
   const radius = 0.15 + Math.random() * 0.15;
-  const satGeometry = new THREE.SphereGeometry(radius, 16, 16);
+  const satGeometry = new THREE.SphereGeometry(radius, 16, 64);
   // Speichere die ursprünglichen Vertex-Positionen
   satGeometry.userData.origPositions = satGeometry.attributes.position.array.slice(0);
   
@@ -111,8 +111,8 @@ for (let i = 0; i < satelliteCount; i++) {
   satellite.userData.selfRotationSpeed = 0.2 + Math.random() * 0.5;
   
   // Individuelle Morphing-Parameter (kleine Werte, damit die Verformung subtil bleibt)
-  satellite.userData.morphIntensity = 0.05 + Math.random() * 0.05; // Verschiebung entlang der Normal
-  satellite.userData.morphFrequency = 2.0 + Math.random() * 2.0;
+  satellite.userData.morphIntensity = 0.1 + Math.random() * 0.05; // Verschiebung entlang der Normal
+  satellite.userData.morphFrequency = 4.0 + Math.random() * 2.0;
   // Zufälliger Phasenwert, um asynchrone Morphing-Effekte zu erzielen
   satellite.userData.morphPhase = Math.random() * Math.PI * 2;
   
