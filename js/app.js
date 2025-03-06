@@ -366,6 +366,11 @@ function attachRNBOMessages(device) {
         bloomPass.strength = parseFloat(param.value);
         console.log("Bloom strength updated: " + bloomPass.strength);
       }
+      if (param.id === "rndmblink") {
+        const value = parseInt(param.value);
+        updateRndmblinkTransparency(value);
+        console.log("rndmblink aktualisiert: ", value);
+      }
       if (param.id === "bloomRadius") {
         bloomPass.radius = parseFloat(param.value);
         console.log("Bloom radius updated: " + bloomPass.radius);
@@ -406,6 +411,11 @@ function attachRNBOMessages(device) {
       if (ev.tag === "bloomStrength") {
         bloomPass.strength = parseFloat(ev.payload);
         console.log("Bloom strength updated: " + bloomPass.strength);
+      }
+      if (ev.tag === "rndmblink") {
+        const value = parseInt(ev.payload);
+        updateRndmblinkTransparency(value);
+        console.log("rndmblink aktualisiert: ", value);
       }
       if (ev.tag === "bloomRadius") {
         bloomPass.radius = parseFloat(ev.payload);
@@ -527,6 +537,26 @@ function setupVerticalSliders() {
 }
 
 // ================= Volume Slider Setup (IDs: volume-slider, volume-thumb) =================
+
+function updateRndmblinkTransparency(value) {
+  // Hole alle Divs mit der Klasse "rndmblink" im Container "rndmcont"
+  const blinkDivs = document.querySelectorAll("#rndmcont .rndmblink");
+  
+  if (value == 0) {
+    // Wenn der RNBO-Wert 0 ist, setze die Opacity aller Divs auf 0 (unsichtbar)
+    blinkDivs.forEach(div => {
+      div.style.opacity = "0";
+    });
+  } else if (value == 1) {
+    // Wenn der Wert 1 ist, setze für jedes Div zufällig entweder Opacity 1 oder 0
+    blinkDivs.forEach(div => {
+      // Beispiel: 50%-Chance, dass das Div voll sichtbar wird
+      div.style.opacity = Math.random() > 0.5 ? "1" : "0";
+    });
+  }
+}
+
+
 
 function setupVolumeSlider() {
   const slider = document.getElementById("volume-slider");
