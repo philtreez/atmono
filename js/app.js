@@ -325,7 +325,7 @@ function drawOscilloscopeFrame() {
   // Hintergrund und Gitter zeichnen
   ctx.fillStyle = 'rgb(10, 10, 10)';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.strokeStyle = 'rgba(50, 50, 50, 0.5)';
+  ctx.strokeStyle = 'rgba(80, 80, 80, 0.5)';
   ctx.lineWidth = 1;
   const gridSpacing = 15;
   for (let x = gridSpacing; x < canvas.width; x += gridSpacing) {
@@ -342,7 +342,7 @@ function drawOscilloscopeFrame() {
   }
   
   // Zeichne Wellenform
-  ctx.lineWidth = 3;
+  ctx.lineWidth = 2;
   ctx.strokeStyle = 'white';
   ctx.beginPath();
   const sliceWidth = canvas.width / bufferLength;
