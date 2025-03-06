@@ -191,7 +191,7 @@ function animate() {
   morphObject.rotation.y += 0.005;
   
   // Update der Satelliten: Orbit und Rotation (keine zusätzliche Morphing-Logik)
-  satellites.forEach((satellite, index) => {
+  satellites.forEach((satellite) => {
     satellite.userData.angle += satellite.userData.orbitSpeed * delta;
     satellite.position.x = morphObject.position.x + satellite.userData.orbitRadius * Math.cos(satellite.userData.angle) * Math.cos(satellite.userData.inclination);
     satellite.position.y = morphObject.position.y + satellite.userData.orbitRadius * Math.sin(satellite.userData.inclination);
@@ -204,10 +204,12 @@ function animate() {
   camera.position.x = Math.sin(clock.getElapsedTime() * 0.2) * 0.2;
   camera.rotation.y = Math.sin(clock.getElapsedTime() * 0.3) * 0.1;
   
-  composer.render();
+  // Statt composer.render() verwenden wir finalComposer.render()!
+  finalComposer.render();
 }
 
 animate();
+
 
 
 // ================= Effekt: Random Planet (seqlight) =================
