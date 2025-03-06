@@ -418,8 +418,19 @@ function attachRNBOMessages(device, context) {
         updatePlaystatSliderFromRNBO(value);
         console.log("playstat aktualisiert: ", value);
       }
+      if (param.id === "rec") {
+        updateButtonFromRNBO(param.id, parseFloat(param.value));
+        console.log(`REC aktualisiert aus RNBO: ${param.value}`);
+        
+        // Falls Aufnahme beendet wird (1 → 0), Buffer visualisieren
+        if (parseFloat(param.value) === 0) {
+          setTimeout(() => {
+            visualizeBuffer("lulu");
+          }, 1);
+        }
+      }
       // Für "rndm" und "rec" als Buttons
-      else if (param.id === "rndm" || param.id === "rec") {
+      else if (param.id === "rndm") {
         updateButtonFromRNBO(param.id, parseFloat(param.value));
         console.log(`${param.id} aktualisiert: ${param.value}`);
       }
