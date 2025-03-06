@@ -384,7 +384,6 @@ function drawOscilloscopeFrame() {
   ctx.stroke();
 }
 
-
 function sendValueToRNBO(param, value) {
   if (window.device && window.device.parametersById && window.device.parametersById.has(param)) {
     window.device.parametersById.get(param).value = value;
