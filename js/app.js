@@ -651,8 +651,8 @@ function updateRndmblinkTransparency(value) {
 }
 
 // ---------------- DOMContentLoaded Aufrufe ----------------
-
 document.addEventListener("DOMContentLoaded", () => {
+  setupRNBO(); // RNBO initialisieren
   setupVolumeSlider();
   setupVerticalSliders();
   setupButtons();
