@@ -107,33 +107,29 @@ function createRandom3DShape() {
 const satellites = [];
 const satelliteCount = 8;
 
-// Satelliten-Erstellung: Weise jedem Satelliten eine zufällige Emissive-Farbe und Intensität zu
 for (let i = 0; i < satelliteCount; i++) {
-  // Erzeuge den Satelliten, z.B. mit deiner createRandom3DShape-Funktion:
+  // Verwende die zufällige 3D-Form statt einer Kugel
   const satGeometry = createRandom3DShape();
+  // Material im Wireframe-Modus beibehalten
   const satMaterial = new THREE.MeshStandardMaterial({
     color: 0xffffff,
     wireframe: true,
-    // Setze hier zufällige Emissive-Werte, die den Bloom beeinflussen
-    emissive: new THREE.Color(Math.random(), Math.random(), Math.random()),
-    emissiveIntensity: 0.2 + Math.random() * 0.8
+    emissive: 0xffffff,
+    emissiveIntensity: 0.2
   });
   const satellite = new THREE.Mesh(satGeometry, satMaterial);
-
-  // Orbit-Parameter etc.
+  
+  // Orbit-Parameter
   satellite.userData.angle = (i / satelliteCount) * Math.PI * 2;
   satellite.userData.inclination = (Math.random() - 0.5) * (Math.PI / 3);
   satellite.userData.orbitRadius = 2 + Math.random() * 2;
   satellite.userData.orbitSpeed = 0.2 + Math.random() * 0.8;
   satellite.userData.selfRotationSpeed = 0.2 + Math.random() * 0.5;
-
-  // Positionierung
+  
+  // Positionierung des Satelliten im Orbit um das Hauptobjekt
   satellite.position.x = morphObject.position.x + satellite.userData.orbitRadius * Math.cos(satellite.userData.angle) * Math.cos(satellite.userData.inclination);
   satellite.position.y = morphObject.position.y + satellite.userData.orbitRadius * Math.sin(satellite.userData.inclination);
   satellite.position.z = morphObject.position.z + satellite.userData.orbitRadius * Math.sin(satellite.userData.angle) * Math.cos(satellite.userData.inclination);
-  
-  // Weise diesen Satelliten der Bloom-Layer (z.B. Layer 1) zu
-  satellite.layers.set(1);
   
   satellites.push(satellite);
   scene.add(satellite);
