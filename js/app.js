@@ -327,12 +327,12 @@ function setupOscilloscope() {
     analyser.getByteTimeDomainData(dataArray);
     
     // Canvas leeren
-    ctx.fillStyle = 'rgb(255, 255, 255)';
+    ctx.fillStyle = 'rgba(255, 255, 255, 0)';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
     // Oszilloskop-Wellenform zeichnen
     ctx.lineWidth = 2;
-    ctx.strokeStyle = 'rgb(0, 255, 0)';
+    ctx.strokeStyle = 'rgb(255, 255, 255)';
     ctx.beginPath();
     
     const sliceWidth = canvas.width / bufferLength;
