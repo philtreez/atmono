@@ -87,11 +87,9 @@ scene.add(morphObject);
 // ================= Zufällige 3D-Formen via ConvexGeometry =================
 
 function createRandom3DShape() {
-  // Erzeuge eine zufällige Anzahl an Punkten (zwischen 20 und 30)
   const points = [];
-  const numPoints = 20 + Math.floor(Math.random() * 10);
+  const numPoints = 20 + Math.floor(Math.random() * 10); // zwischen 20 und 30 Punkte
   for (let i = 0; i < numPoints; i++) {
-    // Erzeuge einen zufälligen Punkt in einer Kugel (Radius zwischen 0.5 und 1.0)
     const point = new THREE.Vector3(
       (Math.random() - 0.5),
       (Math.random() - 0.5),
@@ -99,8 +97,9 @@ function createRandom3DShape() {
     ).normalize().multiplyScalar(0.5 + Math.random() * 0.5);
     points.push(point);
   }
-  // Erzeuge die konvexe Hülle dieser Punkte als Geometrie
   const geometry = new THREE.ConvexGeometry(points);
+  // Skaliere die Geometrie auf etwa ein Drittel
+  geometry.scale(0.33, 0.33, 0.33);
   return geometry;
 }
 
