@@ -272,7 +272,9 @@ async function setupRNBO() {
   window.rnboDevice = deviceInstance;
   window.device = deviceInstance;
   deviceInstance.node.connect(outputNode);
-  attachRNBOMessages(deviceInstance);
+  
+  // Hier wird nun auch der RNBO‑Teil für rec und Waveform integriert:
+  attachRNBOMessages(deviceInstance, context);
   attachOutports(deviceInstance);
   flushParameterQueue();
   
@@ -280,25 +282,6 @@ async function setupRNBO() {
 }
 
 setupRNBO();
-
-const recParam = device.parametersById.get("rec");
-if (recParam) {
-    device.parameterChangeEvent.subscribe((param) => {
-        if (param.id === recParam.id && param.value === 0) {
-            startWaveformVisualization(device, context);
-        }
-    });
-}
-
-// ------ Rec-Button Steuerung ------
-const recButton = document.getElementById("rec");
-if (recButton && recParam) {
-    recButton.addEventListener("click", () => {
-        const newValue = recParam.value === 0 ? 1 : 0;
-        recParam.value = newValue;
-        console.log(`Rec state set to: ${newValue}`);
-    });
-}
 
 function loadRNBOScript(version) {
   return new Promise((resolve, reject) => {
@@ -339,25 +322,31 @@ function flushParameterQueue() {
 
 // ================= Steuerung: RNBO Nachrichten =================
 
-function updateSliderFromRNBO(id, value) {
-  const sliderContainer = document.getElementById("slider-" + id);
-  if (sliderContainer) {
-    // Speichere den neuen Wert
-    sliderContainer.dataset.value = value;
-    // Suche den Thumb im Container
-    const thumb = sliderContainer.querySelector(".thumb");
-    if (thumb) {
-      // Berechne den verfügbaren vertikalen Bewegungsbereich
-      const travel = sliderContainer.clientHeight - thumb.clientHeight;
-      // Setze den Thumb vertikal entsprechend dem Wert (0 bis 1)
-      thumb.style.top = (value * travel) + "px";
-    }
-  }
-}
-
-function attachRNBOMessages(device) {
+function attachRNBOMessages(device, context) {
   const controlIds = ["s1", "s2", "s3", "s4", "s5", "s6", "s7", "s8", "vol", "b1", "b2", "b3", "b4", "b5", "b6", "b7", "b8", "rndm"];
-
+  
+  // --- Rec-Parameter Integration ---
+  const recParam = device.parametersById.get("rec");
+  if (recParam) {
+    // Wenn rec von 1 auf 0 wechselt, starte die Waveform-Visualisierung
+    device.parameterChangeEvent.subscribe(param => {
+      if (param.id === recParam.id && param.value === 0) {
+        startWaveformVisualization(device, context);
+      }
+    });
+  }
+  
+  // Rec-Button Steuerung (HTML-Element mit ID "rec" muss existieren)
+  const recButton = document.getElementById("rec");
+  if (recButton && recParam) {
+    recButton.addEventListener("click", () => {
+      const newValue = recParam.value === 0 ? 1 : 0;
+      recParam.value = newValue;
+      console.log(`Rec state set to: ${newValue}`);
+    });
+  }
+  
+  // --- Restliche Parameter-Integration ---
   if (device.parameterChangeEvent) {
     device.parameterChangeEvent.subscribe(param => {
       if (param.id === "morph") {
@@ -452,18 +441,61 @@ function attachRNBOMessages(device) {
   }
 }
 
+async function startWaveformVisualization(device, context) {
+  const bufferDescription = device.dataBufferDescriptions.find(desc => desc.id === "lulu");
+  if (!bufferDescription) {
+      console.error("Buffer 'lulu' not found in RNBO device.");
+      return;
+  }
+  try {
+      const dataBuffer = await device.releaseDataBuffer(bufferDescription.id);
+      const audioBuffer = await dataBuffer.getAsAudioBuffer(context);
+      const canvas = document.getElementById("waveformCanvas");
+      if (!canvas || !canvas.getContext) {
+          console.error("waveformCanvas not found or not a valid canvas element.");
+          return;
+      }
+      const ctx = canvas.getContext("2d");
+
+      function draw() {
+          const channelData = audioBuffer.getChannelData(0);
+          const step = Math.ceil(channelData.length / canvas.width);
+          const amp = canvas.height / 2;
+
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.beginPath();
+          ctx.moveTo(0, amp);
+
+          for (let i = 0; i < canvas.width; i++) {
+              const sample = channelData[i * step];
+              ctx.lineTo(i, amp + sample * amp);
+          }
+
+          ctx.strokeStyle = "white";
+          ctx.lineWidth = 1;
+          ctx.stroke();
+      }
+
+      draw(); // Einmalige Visualisierung nach Aufnahmeende
+
+      // Lade den AudioBuffer zurück in den RNBO-Patcher, um das Abspielen zu ermöglichen
+      await device.setDataBuffer(bufferDescription.id, audioBuffer);
+
+  } catch (error) {
+      console.error("Error retrieving audio buffer:", error);
+  }
+}
+
+// ================= Steuerung der Outports =================
+
 function attachOutports(device) {
   device.messageEvent.subscribe(ev => {
-    // Handle grider und glitchy wie bisher:
     if (ev.tag === "glitchy") {
       glitchPass.enabled = (parseInt(ev.payload) === 1);
     }
-    // Hier prüfen wir, ob der Outport für Light-Daten ist
     if (ev.tag.startsWith("light1") || ev.tag.startsWith("light2")) {
-      // updateLights erwartet den Outport-Namen (z. B. "light1" oder "light2") und einen Wert (0-8)
       updateLights(ev.tag, ev.payload);
     }
-    
     console.log(`${ev.tag}: ${ev.payload}`);
   });
 }
@@ -471,7 +503,6 @@ function attachOutports(device) {
 function updateLights(outport, value) {
   const intVal = Math.round(parseFloat(value));
   console.log(`Update Lights for ${outport}: ${intVal}`);
-  // Wenn der Wert 0 ist, sollen alle unsichtbar sein.
   for (let i = 1; i <= 8; i++) {
     const el = document.getElementById(`${outport}-${i}`);
     if (el) {
@@ -480,48 +511,54 @@ function updateLights(outport, value) {
   }
 }
 
-// ================= Rotary Slider Setup (IDs: slider-s1 ... slider-s8) =================
+// ================= Rotary Slider Setup (Vertikale Slider für s1 ... s8) =================
+
+function updateSliderFromRNBO(id, value) {
+  const sliderContainer = document.getElementById("slider-" + id);
+  if (sliderContainer) {
+    sliderContainer.dataset.value = value;
+    const thumb = sliderContainer.querySelector(".thumb");
+    if (thumb) {
+      const travel = sliderContainer.clientHeight - thumb.clientHeight;
+      thumb.style.top = (value * travel) + "px";
+    }
+  }
+}
 
 function setupVerticalSliders() {
   const sliderIds = ["s1", "s2", "s3", "s4", "s5", "s6", "s7", "s8"];
   
   sliderIds.forEach(id => {
-    // Hole den Container, der als Hintergrund dient (aus Webflow erstellt)
     const sliderContainer = document.getElementById("slider-" + id);
     if (!sliderContainer) {
       console.warn("Slider container nicht gefunden:", "slider-" + id);
       return;
     }
     
-    // Stelle sicher, dass der Container die richtigen Styles hat (falls nicht, kannst du sie auch im JS setzen)
     sliderContainer.style.width = "30px";
     sliderContainer.style.height = "130px";
     sliderContainer.style.position = "relative";
     sliderContainer.style.borderRadius = "4px";
-    sliderContainer.dataset.value = "0"; // Initialwert 0
+    sliderContainer.dataset.value = "0";
     
-    // Suche im Container nach einem existierenden Thumb-Div
     const thumb = sliderContainer.querySelector(".thumb");
     if (!thumb) {
       console.warn("Thumb div nicht gefunden in:", "slider-" + id);
       return;
     }
     
-    // Style den Thumb (falls nötig – du kannst diese auch in Webflow definieren)
     thumb.style.width = "30px";
     thumb.style.height = "13px";
     thumb.style.position = "absolute";
-    thumb.style.top = "0px"; // Initial oben
+    thumb.style.top = "0px";
     thumb.style.left = "0px";
     thumb.style.borderRadius = "4px";
     thumb.style.touchAction = "none";
     
-    // Variablen zur Steuerung der Drag-Interaktion
     let isDragging = false;
     let startY = 0;
     let initialValue = 0;
     
-    // Beim Pointer-Down am Thumb: Drag starten
     thumb.addEventListener("pointerdown", (e) => {
       isDragging = true;
       startY = e.clientY;
@@ -529,53 +566,24 @@ function setupVerticalSliders() {
       thumb.setPointerCapture(e.pointerId);
     });
     
-    // Beim Pointer-Move: Verschiebe den Thumb vertikal
     thumb.addEventListener("pointermove", (e) => {
       if (!isDragging) return;
-      
       const dy = e.clientY - startY;
-      // Berechne den verfügbaren Bewegungsbereich (Container-Höhe minus Thumb-Höhe)
       const travel = sliderContainer.clientHeight - thumb.clientHeight;
-      // Berechne den neuen Wert (zwischen 0 und 1)
       let delta = dy / travel;
       let newValue = initialValue + delta;
       newValue = Math.max(0, Math.min(newValue, 1));
       sliderContainer.dataset.value = newValue.toString();
-      
-      // Setze die neue Position des Thumbs
       thumb.style.top = (newValue * travel) + "px";
-      
-      // Sende den neuen Wert an RNBO (oder an eine andere Steuerungslogik)
       sendValueToRNBO(id, newValue);
     });
     
-    // Beende das Dragging
     thumb.addEventListener("pointerup", () => { isDragging = false; });
     thumb.addEventListener("pointercancel", () => { isDragging = false; });
   });
 }
 
 // ================= Volume Slider Setup (IDs: volume-slider, volume-thumb) =================
-
-function updateRndmblinkTransparency(value) {
-  // Hole alle Divs mit der Klasse "rndmblink" im Container "rndmcont"
-  const blinkDivs = document.querySelectorAll("#rndmcont .rndmblink");
-  
-  if (value == 0) {
-    // Wenn der RNBO-Wert 0 ist, setze die Opacity aller Divs auf 0 (unsichtbar)
-    blinkDivs.forEach(div => {
-      div.style.opacity = "0";
-    });
-  } else if (value == 1) {
-    // Wenn der Wert 1 ist, setze für jedes Div zufällig entweder Opacity 1 oder 0
-    blinkDivs.forEach(div => {
-      // Beispiel: 50%-Chance, dass das Div voll sichtbar wird
-      div.style.opacity = Math.random() > 0.5 ? "1" : "0";
-    });
-  }
-}
-
-
 
 function setupVolumeSlider() {
   const slider = document.getElementById("volume-slider");
@@ -621,7 +629,7 @@ function updateVolumeSliderFromRNBO(value) {
   thumb.style.left = (value * maxMovement) + "px";
 }
 
-// ================= Button Setup (IDs: b1 ... b8) =================
+// ================= Button Setup (IDs: b1 ... b8, rndm) =================
 
 function setupButtons() {
   const buttonIds = ["b1", "b2", "b3", "b4", "b5", "b6", "b7", "b8", "rndm"];
@@ -631,7 +639,6 @@ function setupButtons() {
       console.warn("Button element nicht gefunden:", id);
       return;
     }
-    // Initialer Zustand: 0 = unsichtbar
     button.dataset.value = "0";
     button.style.opacity = "0";
     button.style.cursor = "pointer";
@@ -654,53 +661,19 @@ function updateButtonFromRNBO(id, value) {
   }
 }
 
-async function startWaveformVisualization(device, context) {
-  const bufferDescription = device.dataBufferDescriptions.find(desc => desc.id === "lulu");
-  if (!bufferDescription) {
-      console.error("Buffer 'lulu' not found in RNBO device.");
-      return;
-  }
+// ================= Random Blink (rndmblink) Setup =================
 
-  try {
-      const dataBuffer = await device.releaseDataBuffer(bufferDescription.id);
-      const audioBuffer = await dataBuffer.getAsAudioBuffer(context);
-      const canvas = document.getElementById("waveformCanvas");
-      if (!canvas || !canvas.getContext) {
-          console.error("waveformCanvas not found or not a valid canvas element.");
-          return;
-      }
-
-      // Setze das Canvas auf die im Designer definierte Größe
-      const ctx = canvas.getContext("2d");
-
-      function draw() {
-          const channelData = audioBuffer.getChannelData(0);
-          const step = Math.ceil(channelData.length / canvas.width); // Schrittgröße pro Pixel
-          const amp = canvas.height / 2;
-
-          ctx.clearRect(0, 0, canvas.width, canvas.height);
-          ctx.beginPath();
-          ctx.moveTo(0, amp);
-
-          for (let i = 0; i < canvas.width; i++) {
-              const min = channelData[i * step];
-              const max = channelData[i * step];
-              ctx.lineTo(i, amp + min * amp);
-              ctx.lineTo(i, amp + max * amp);
-          }
-
-          ctx.strokeStyle = "white";
-          ctx.lineWidth = 1;
-          ctx.stroke();
-      }
-
-      draw(); // Einmalige Visualisierung nach Aufnahmeende
-
-      // Buffer wieder in den RNBO-Patcher laden, um Abspielen zu ermöglichen
-      await device.setDataBuffer(bufferDescription.id, audioBuffer);
-
-  } catch (error) {
-      console.error("Error retrieving audio buffer:", error);
+function updateRndmblinkTransparency(value) {
+  const blinkDivs = document.querySelectorAll("#rndmcont .rndmblink");
+  
+  if (value == 0) {
+    blinkDivs.forEach(div => {
+      div.style.opacity = "0";
+    });
+  } else if (value == 1) {
+    blinkDivs.forEach(div => {
+      div.style.opacity = Math.random() > 0.5 ? "1" : "0";
+    });
   }
 }
 
