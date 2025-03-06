@@ -245,7 +245,8 @@ let parameterQueue = {};
 async function setupRNBO() {
   const patchExportURL = "https://atmono-philtreezs-projects.vercel.app/export/patch.export.json";
   const WAContext = window.AudioContext || window.webkitAudioContext;
-  const context = new WAContext();
+  const context = new WAContext();               // AudioContext erstellen
+  window.rnboContext = context;                    // Global speichern
   const outputNode = context.createGain();
   outputNode.connect(context.destination);
   
@@ -345,25 +346,27 @@ function visualizeWaveform(samples) {
 
 // Holt den AudioBuffer aus dem RNBO-Gerät mithilfe der releaseDataBuffer‑Methode
 // und visualisiert anschließend den ersten Kanal
-function visualizeBuffer(bufferName) {
+async function visualizeBuffer(bufferName) {
   if (!window.rnboDevice || typeof window.rnboDevice.releaseDataBuffer !== 'function') {
     console.warn("RNBO device oder releaseDataBuffer Funktion nicht verfügbar.");
     return;
   }
-  
-  window.rnboDevice.releaseDataBuffer(bufferName)
-    .then(audioBuffer => {
-      if (!audioBuffer) {
-        console.warn("Kein AudioBuffer von " + bufferName + " erhalten.");
-        return;
-      }
-      // Verwende den ersten Kanal zur Visualisierung
-      const channelData = audioBuffer.getChannelData(0);
-      visualizeWaveform(channelData);
-    })
-    .catch(err => {
-      console.error("Fehler beim Abrufen des DataBuffers: ", err);
-    });
+  try {
+    const dataBuffer = await window.rnboDevice.releaseDataBuffer(bufferName);
+    if (!window.rnboContext) {
+      console.warn("Kein AudioContext verfügbar. Stelle sicher, dass setupRNBO() aufgerufen wurde.");
+      return;
+    }
+    const audioBuffer = await dataBuffer.getAsAudioBuffer(window.rnboContext);
+    if (!audioBuffer) {
+      console.warn("Kein AudioBuffer von " + bufferName + " erhalten.");
+      return;
+    }
+    const channelData = audioBuffer.getChannelData(0);
+    visualizeWaveform(channelData);
+  } catch (err) {
+    console.error("Fehler beim Abrufen des DataBuffers: ", err);
+  }
 }
 
 // ---------------- Steuerung: RNBO Nachrichten ----------------
