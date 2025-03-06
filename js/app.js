@@ -437,9 +437,9 @@ function attachRNBOMessages(device, context) {
 }
 
 async function startWaveformVisualization(device, context) {
-  const bufferDescription = device.dataBufferDescriptions.find(desc => desc.id === "lulu");
+  const bufferDescription = device.dataBufferDescriptions.find(desc => desc.id === "gli");
   if (!bufferDescription) {
-    console.error("Buffer 'lulu' not found in RNBO device.");
+    console.error("Buffer 'gli' not found in RNBO device.");
     return;
   }
   try {
