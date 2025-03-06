@@ -252,7 +252,7 @@ async function setupRNBO() {
   
   // Analyser Node hinzufügen:
   const analyser = context.createAnalyser();
-  analyser.fftSize = 2048;
+  analyser.fftSize = 1024;
   window.rnboAnalyser = analyser;  // Global speichern, damit das Oszilloskop darauf zugreifen kann
   outputNode.connect(analyser);
   
@@ -348,7 +348,7 @@ function drawOscilloscopeFrame() {
   const sliceWidth = canvas.width / bufferLength;
   let x = 0;
   for (let i = 0; i < bufferLength; i++) {
-    const y = canvas.height / 2 + dataArray[i] * (canvas.height / 2 * 5);
+    const y = canvas.height / 2 + dataArray[i] * (canvas.height / 2 * 10);
     if (i === 0) {
       ctx.moveTo(x, y);
     } else {
