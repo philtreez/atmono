@@ -25,11 +25,11 @@ const bloomPass = new THREE.UnrealBloomPass(
   new THREE.Vector2(window.innerWidth, window.innerHeight),
   1.5,   // stärkere Werte hier, da nur selektiv angewendet
   0.4,
-  0.85
+  0.9
 );
 bloomPass.threshold = 0;
 bloomPass.strength = 1.5;
-bloomPass.radius = 1.3;
+bloomPass.radius = 0.4;
 
 const bloomComposer = new THREE.EffectComposer(renderer);
 bloomComposer.renderToScreen = false;
