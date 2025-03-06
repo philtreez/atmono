@@ -92,7 +92,7 @@ const satelliteCount = 8;
 for (let i = 0; i < satelliteCount; i++) {
   const radius = 0.15 + Math.random() * 0.15;
   const satGeometry = new THREE.SphereGeometry(radius, 16, 16);
-  // Speichere die Original-Vertex-Positionen
+  // Speichere die ursprünglichen Vertex-Positionen
   satGeometry.userData.origPositions = satGeometry.attributes.position.array.slice(0);
   
   const satMaterial = new THREE.MeshStandardMaterial({
@@ -103,19 +103,20 @@ for (let i = 0; i < satelliteCount; i++) {
   });
   const satellite = new THREE.Mesh(satGeometry, satMaterial);
   
-  // Gleichmäßig verteilte Startwinkel
+  // Setze Orbit-Parameter (wie zuvor)
   satellite.userData.angle = (i / satelliteCount) * Math.PI * 2;
   satellite.userData.inclination = (Math.random() - 0.5) * (Math.PI / 3);
-  
   satellite.userData.orbitRadius = 2 + Math.random() * 2;
   satellite.userData.orbitSpeed = 0.2 + Math.random() * 0.8;
   satellite.userData.selfRotationSpeed = 0.2 + Math.random() * 0.5;
   
-  // Zufällige Morphing-Parameter für jeden Satelliten:
-  satellite.userData.morphIntensity = 0.1 + Math.random() * 0.2;
+  // Individuelle Morphing-Parameter (kleine Werte, damit die Verformung subtil bleibt)
+  satellite.userData.morphIntensity = 0.05 + Math.random() * 0.05; // Verschiebung entlang der Normal
   satellite.userData.morphFrequency = 2.0 + Math.random() * 2.0;
-  satellite.userData.noiseFactor = 0.05 + Math.random() * 0.1;
+  // Zufälliger Phasenwert, um asynchrone Morphing-Effekte zu erzielen
+  satellite.userData.morphPhase = Math.random() * Math.PI * 2;
   
+  // Initiale Positionierung (wie gehabt)
   satellite.position.x = morphObject.position.x + satellite.userData.orbitRadius * Math.cos(satellite.userData.angle) * Math.cos(satellite.userData.inclination);
   satellite.position.y = morphObject.position.y + satellite.userData.orbitRadius * Math.sin(satellite.userData.inclination);
   satellite.position.z = morphObject.position.z + satellite.userData.orbitRadius * Math.sin(satellite.userData.angle) * Math.cos(satellite.userData.inclination);
@@ -159,34 +160,42 @@ function animate() {
 
   // Update der Satelliten
   satellites.forEach((satellite, index) => {
-    // Orbit-Update
+    // Orbit-Update (wie gehabt)
     satellite.userData.angle += satellite.userData.orbitSpeed * delta;
     satellite.position.x = morphObject.position.x + satellite.userData.orbitRadius * Math.cos(satellite.userData.angle) * Math.cos(satellite.userData.inclination);
     satellite.position.y = morphObject.position.y + satellite.userData.orbitRadius * Math.sin(satellite.userData.inclination);
     satellite.position.z = morphObject.position.z + satellite.userData.orbitRadius * Math.sin(satellite.userData.angle) * Math.cos(satellite.userData.inclination);
     
-    // Eigene Rotation
+    // Eigene Rotation um die Achse
     satellite.rotation.y += satellite.userData.selfRotationSpeed * delta;
     
-    // Morphing der Satelliten-Geometrie
+    // Morphing: Verschiebe die Vertices entlang ihrer Normalen
     const positions = satellite.geometry.attributes.position.array;
+    const normals = satellite.geometry.attributes.normal.array;
     const origPositions = satellite.geometry.userData.origPositions;
     const vertexCount = positions.length / 3;
+    
+    // Berechne den Versatz (displacement) für diesen Satelliten
+    const displacement = Math.sin(clock.getElapsedTime() * satellite.userData.morphFrequency + satellite.userData.morphPhase)
+                         * satellite.userData.morphIntensity;
+    
     for (let i = 0; i < vertexCount; i++) {
       const ix = i * 3;
       const ox = origPositions[ix];
       const oy = origPositions[ix + 1];
       const oz = origPositions[ix + 2];
-      const sinOffset = Math.sin(clock.getElapsedTime() * satellite.userData.morphFrequency + (ox + oy + oz));
-      const noiseOffset = satellite.userData.noiseFactor * Math.sin(clock.getElapsedTime() * 0.5 + (ox - oy + oz));
-      const offset = sinOffset + noiseOffset;
-      positions[ix]     = ox + ox * offset * satellite.userData.morphIntensity;
-      positions[ix + 1] = oy + oy * offset * satellite.userData.morphIntensity;
-      positions[ix + 2] = oz + oz * offset * satellite.userData.morphIntensity;
+      // Greife auf den Normalenvektor zu
+      const nx = normals[ix];
+      const ny = normals[ix + 1];
+      const nz = normals[ix + 2];
+      // Verschiebe entlang der Normalen (ohne uniform zu skalieren)
+      positions[ix]     = ox + nx * displacement;
+      positions[ix + 1] = oy + ny * displacement;
+      positions[ix + 2] = oz + nz * displacement;
     }
     satellite.geometry.attributes.position.needsUpdate = true;
     
-    // Debug-Ausgabe für den ersten Satelliten
+    // Optional: Debug-Ausgabe für den ersten Satelliten
     if (index === 0) {
       console.log("Satellite 0 angle:", satellite.userData.angle.toFixed(2));
     }
