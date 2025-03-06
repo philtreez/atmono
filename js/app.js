@@ -409,16 +409,22 @@ function attachRNBOMessages(device, context) {
         updateRndmblinkTransparency(value);
         console.log("rndmblink aktualisiert: ", value);
       }
-      if (param.id === "playstat") {
-        const value = parseInt(param.value);
-        updatePlaystatSliderFromRNBO(value);
-        console.log("playstat aktualisiert: ", value);
-      }
       if (param.id === "bloomRadius") {
         bloomPass.radius = parseFloat(param.value);
         console.log("Bloom radius updated: " + bloomPass.radius);
       }
-      if (controlIds.includes(param.id)) {
+      if (param.id === "playstat") {
+        const value = parseFloat(param.value);
+        updatePlaystatSliderFromRNBO(value);
+        console.log("playstat aktualisiert: ", value);
+      }
+      // Spezielle Behandlung von rndm und rec als Buttons
+      else if (param.id === "rndm" || param.id === "rec") {
+        updateButtonFromRNBO(param.id, parseFloat(param.value));
+        console.log(`${param.id} aktualisiert: ${param.value}`);
+      }
+      // Restliche Parameterbehandlung
+      else if (controlIds.includes(param.id)) {
         if (param.id.startsWith("b")) {
           updateButtonFromRNBO(param.id, parseFloat(param.value));
         } else {
@@ -459,16 +465,20 @@ function attachRNBOMessages(device, context) {
         updateRndmblinkTransparency(value);
         console.log("rndmblink aktualisiert: ", value);
       }
-      if (ev.tag === "playstat") {
-        const value = parseInt(ev.payload);
-        updatePlaystatSliderFromRNBO(value);
-        console.log("playstat aktualisiert: ", value);
-      }
       if (ev.tag === "bloomRadius") {
         bloomPass.radius = parseFloat(ev.payload);
         console.log("Bloom radius updated: " + bloomPass.radius);
       }
-      if (controlIds.includes(ev.tag)) {
+      if (ev.tag === "playstat") {
+        const value = parseFloat(ev.payload);
+        updatePlaystatSliderFromRNBO(value);
+        console.log("playstat aktualisiert: ", value);
+      }
+      else if (ev.tag === "rndm" || ev.tag === "rec") {
+        updateButtonFromRNBO(ev.tag, parseFloat(ev.payload));
+        console.log(`${ev.tag} aktualisiert: ${ev.payload}`);
+      }
+      else if (controlIds.includes(ev.tag)) {
         if (ev.tag.startsWith("b")) {
           updateButtonFromRNBO(ev.tag, parseFloat(ev.payload));
         } else {
