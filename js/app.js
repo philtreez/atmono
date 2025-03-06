@@ -237,6 +237,19 @@ function triggerSeqlight() {
 }
 
 // ================= RNBO Integration =================
+document.addEventListener("DOMContentLoaded", () => {
+  // Optional: Überprüfe, ob das Canvas-Element existiert
+  const waveformCanvas = document.getElementById("waveformCanvas");
+  if (!waveformCanvas) {
+    console.error("waveformCanvas not found or not a valid canvas element.");
+    return;
+  }
+
+  // Starte die RNBO-Setup-Funktion, sobald der DOM geladen ist
+  setupRNBO();
+});
+
+// ---------------- RNBO Integration Code ----------------
 
 window.rnboDevice = null;
 window.device = null; // Für sendValueToRNBO
@@ -272,16 +285,12 @@ async function setupRNBO() {
   window.rnboDevice = deviceInstance;
   window.device = deviceInstance;
   deviceInstance.node.connect(outputNode);
-  
-  // Hier wird nun auch der RNBO‑Teil für rec und Waveform integriert:
   attachRNBOMessages(deviceInstance, context);
   attachOutports(deviceInstance);
   flushParameterQueue();
   
   document.body.onclick = () => context.resume();
 }
-
-setupRNBO();
 
 function loadRNBOScript(version) {
   return new Promise((resolve, reject) => {
@@ -320,7 +329,7 @@ function flushParameterQueue() {
   }
 }
 
-// ================= Steuerung: RNBO Nachrichten =================
+// ---------------- Steuerung: RNBO Nachrichten ----------------
 
 function attachRNBOMessages(device, context) {
   const controlIds = ["s1", "s2", "s3", "s4", "s5", "s6", "s7", "s8", "vol", "b1", "b2", "b3", "b4", "b5", "b6", "b7", "b8", "rndm"];
@@ -328,7 +337,6 @@ function attachRNBOMessages(device, context) {
   // --- Rec-Parameter Integration ---
   const recParam = device.parametersById.get("rec");
   if (recParam) {
-    // Wenn rec von 1 auf 0 wechselt, starte die Waveform-Visualisierung
     device.parameterChangeEvent.subscribe(param => {
       if (param.id === recParam.id && param.value === 0) {
         startWaveformVisualization(device, context);
@@ -336,7 +344,6 @@ function attachRNBOMessages(device, context) {
     });
   }
   
-  // Rec-Button Steuerung (HTML-Element mit ID "rec" muss existieren)
   const recButton = document.getElementById("rec");
   if (recButton && recParam) {
     recButton.addEventListener("click", () => {
@@ -383,7 +390,6 @@ function attachRNBOMessages(device, context) {
         bloomPass.radius = parseFloat(param.value);
         console.log("Bloom radius updated: " + bloomPass.radius);
       }
-      // Bestehende Steuerung für Slider und Buttons
       if (controlIds.includes(param.id)) {
         if (param.id.startsWith("b")) {
           updateButtonFromRNBO(param.id, parseFloat(param.value));
@@ -444,49 +450,41 @@ function attachRNBOMessages(device, context) {
 async function startWaveformVisualization(device, context) {
   const bufferDescription = device.dataBufferDescriptions.find(desc => desc.id === "lulu");
   if (!bufferDescription) {
-      console.error("Buffer 'lulu' not found in RNBO device.");
-      return;
+    console.error("Buffer 'lulu' not found in RNBO device.");
+    return;
   }
   try {
-      const dataBuffer = await device.releaseDataBuffer(bufferDescription.id);
-      const audioBuffer = await dataBuffer.getAsAudioBuffer(context);
-      const canvas = document.getElementById("waveformCanvas");
-      if (!canvas || !canvas.getContext) {
-          console.error("waveformCanvas not found or not a valid canvas element.");
-          return;
+    const dataBuffer = await device.releaseDataBuffer(bufferDescription.id);
+    const audioBuffer = await dataBuffer.getAsAudioBuffer(context);
+    const canvas = document.getElementById("waveformCanvas");
+    if (!canvas || !canvas.getContext) {
+      console.error("waveformCanvas not found or not a valid canvas element.");
+      return;
+    }
+    const ctx = canvas.getContext("2d");
+    function draw() {
+      const channelData = audioBuffer.getChannelData(0);
+      const step = Math.ceil(channelData.length / canvas.width);
+      const amp = canvas.height / 2;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.beginPath();
+      ctx.moveTo(0, amp);
+      for (let i = 0; i < canvas.width; i++) {
+        const sample = channelData[i * step];
+        ctx.lineTo(i, amp + sample * amp);
       }
-      const ctx = canvas.getContext("2d");
-
-      function draw() {
-          const channelData = audioBuffer.getChannelData(0);
-          const step = Math.ceil(channelData.length / canvas.width);
-          const amp = canvas.height / 2;
-
-          ctx.clearRect(0, 0, canvas.width, canvas.height);
-          ctx.beginPath();
-          ctx.moveTo(0, amp);
-
-          for (let i = 0; i < canvas.width; i++) {
-              const sample = channelData[i * step];
-              ctx.lineTo(i, amp + sample * amp);
-          }
-
-          ctx.strokeStyle = "white";
-          ctx.lineWidth = 1;
-          ctx.stroke();
-      }
-
-      draw(); // Einmalige Visualisierung nach Aufnahmeende
-
-      // Lade den AudioBuffer zurück in den RNBO-Patcher, um das Abspielen zu ermöglichen
-      await device.setDataBuffer(bufferDescription.id, audioBuffer);
-
+      ctx.strokeStyle = "white";
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+    draw(); // Einmalige Visualisierung nach Aufnahmeende
+    await device.setDataBuffer(bufferDescription.id, audioBuffer);
   } catch (error) {
-      console.error("Error retrieving audio buffer:", error);
+    console.error("Error retrieving audio buffer:", error);
   }
 }
 
-// ================= Steuerung der Outports =================
+// ---------------- Steuerung der Outports ----------------
 
 function attachOutports(device) {
   device.messageEvent.subscribe(ev => {
@@ -511,7 +509,7 @@ function updateLights(outport, value) {
   }
 }
 
-// ================= Rotary Slider Setup (Vertikale Slider für s1 ... s8) =================
+// ---------------- Rotary Slider Setup (Vertikale Slider für s1 ... s8) ----------------
 
 function updateSliderFromRNBO(id, value) {
   const sliderContainer = document.getElementById("slider-" + id);
@@ -527,26 +525,22 @@ function updateSliderFromRNBO(id, value) {
 
 function setupVerticalSliders() {
   const sliderIds = ["s1", "s2", "s3", "s4", "s5", "s6", "s7", "s8"];
-  
   sliderIds.forEach(id => {
     const sliderContainer = document.getElementById("slider-" + id);
     if (!sliderContainer) {
       console.warn("Slider container nicht gefunden:", "slider-" + id);
       return;
     }
-    
     sliderContainer.style.width = "30px";
     sliderContainer.style.height = "130px";
     sliderContainer.style.position = "relative";
     sliderContainer.style.borderRadius = "4px";
     sliderContainer.dataset.value = "0";
-    
     const thumb = sliderContainer.querySelector(".thumb");
     if (!thumb) {
       console.warn("Thumb div nicht gefunden in:", "slider-" + id);
       return;
     }
-    
     thumb.style.width = "30px";
     thumb.style.height = "13px";
     thumb.style.position = "absolute";
@@ -554,18 +548,15 @@ function setupVerticalSliders() {
     thumb.style.left = "0px";
     thumb.style.borderRadius = "4px";
     thumb.style.touchAction = "none";
-    
     let isDragging = false;
     let startY = 0;
     let initialValue = 0;
-    
     thumb.addEventListener("pointerdown", (e) => {
       isDragging = true;
       startY = e.clientY;
       initialValue = parseFloat(sliderContainer.dataset.value);
       thumb.setPointerCapture(e.pointerId);
     });
-    
     thumb.addEventListener("pointermove", (e) => {
       if (!isDragging) return;
       const dy = e.clientY - startY;
@@ -577,13 +568,12 @@ function setupVerticalSliders() {
       thumb.style.top = (newValue * travel) + "px";
       sendValueToRNBO(id, newValue);
     });
-    
     thumb.addEventListener("pointerup", () => { isDragging = false; });
     thumb.addEventListener("pointercancel", () => { isDragging = false; });
   });
 }
 
-// ================= Volume Slider Setup (IDs: volume-slider, volume-thumb) =================
+// ---------------- Volume Slider Setup (IDs: volume-slider, volume-thumb) ----------------
 
 function setupVolumeSlider() {
   const slider = document.getElementById("volume-slider");
@@ -592,22 +582,18 @@ function setupVolumeSlider() {
     console.error("Volume slider elements not found!");
     return;
   }
-  
   const sliderWidth = slider.offsetWidth;
   const thumbWidth = thumb.offsetWidth;
   const maxMovement = sliderWidth - thumbWidth;
-  
   const initialValue = 0.05;
   const initialX = maxMovement * initialValue;
   thumb.style.left = initialX + "px";
   sendValueToRNBO("vol", initialValue);
-  
   let isDragging = false;
   thumb.addEventListener("mousedown", (e) => {
     isDragging = true;
     e.preventDefault();
   });
-  
   document.addEventListener("mousemove", (e) => {
     if (!isDragging) return;
     const sliderRect = slider.getBoundingClientRect();
@@ -617,7 +603,6 @@ function setupVolumeSlider() {
     const normalizedValue = newX / maxMovement;
     sendValueToRNBO("vol", normalizedValue);
   });
-  
   document.addEventListener("mouseup", () => { isDragging = false; });
 }
 
@@ -629,7 +614,7 @@ function updateVolumeSliderFromRNBO(value) {
   thumb.style.left = (value * maxMovement) + "px";
 }
 
-// ================= Button Setup (IDs: b1 ... b8, rndm) =================
+// ---------------- Button Setup (IDs: b1 ... b8, rndm) ----------------
 
 function setupButtons() {
   const buttonIds = ["b1", "b2", "b3", "b4", "b5", "b6", "b7", "b8", "rndm"];
@@ -642,7 +627,6 @@ function setupButtons() {
     button.dataset.value = "0";
     button.style.opacity = "0";
     button.style.cursor = "pointer";
-    
     button.addEventListener("click", () => {
       let current = parseInt(button.dataset.value);
       let newValue = (current === 0) ? 1 : 0;
@@ -661,11 +645,10 @@ function updateButtonFromRNBO(id, value) {
   }
 }
 
-// ================= Random Blink (rndmblink) Setup =================
+// ---------------- Random Blink (rndmblink) Setup ----------------
 
 function updateRndmblinkTransparency(value) {
   const blinkDivs = document.querySelectorAll("#rndmcont .rndmblink");
-  
   if (value == 0) {
     blinkDivs.forEach(div => {
       div.style.opacity = "0";
@@ -677,7 +660,7 @@ function updateRndmblinkTransparency(value) {
   }
 }
 
-// ================= DOMContentLoaded Aufrufe =================
+// ---------------- DOMContentLoaded Aufrufe ----------------
 
 document.addEventListener("DOMContentLoaded", () => {
   setupVolumeSlider();
