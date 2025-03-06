@@ -464,7 +464,7 @@ async function visualizeBuffer(bufferName) {
 // ---------------- Steuerung: RNBO Nachrichten ----------------
 
 function attachRNBOMessages(device, context) {
-  const controlIds = ["s1", "s2", "s3", "s4", "s5", "s6", "s7", "s8", "vol", "playstat", "b1", "b2", "b3", "b4", "b5", "b6", "b7", "b8", "rndm", "rec"];
+  const controlIds = ["s1", "s2", "s3", "s4", "s5", "s6", "s7", "s8", "chordz", "morphstr", "vol", "playstat", "b1", "b2", "b3", "b4", "b5", "b6", "b7", "b8", "rndm", "rec"];
   
   // --- Restliche Parameter-Integration ---
   if (device.parameterChangeEvent) {
@@ -636,7 +636,7 @@ function updateSliderFromRNBO(id, value) {
 }
 
 function setupVerticalSliders() {
-  const sliderIds = ["s1", "s2", "s3", "s4", "s5", "s6", "s7", "s8"];
+  const sliderIds = ["s1", "s2", "s3", "s4", "s5", "s6", "s7", "s8", "chordz", "morphstr"];
   sliderIds.forEach(id => {
     const sliderContainer = document.getElementById("slider-" + id);
     if (!sliderContainer) {
