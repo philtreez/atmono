@@ -38,7 +38,6 @@ outlinePass.edgeGlow = 1.0;         // optional, für Glow-Effekt
 outlinePass.edgeThickness = 1.0;    // Dicke der Kontur
 outlinePass.visibleEdgeColor.set('#ffffff'); // weiße Kontur
 outlinePass.hiddenEdgeColor.set('#190a05');    // Farbe für verdeckte Kanten
-outlinePass.selectedObjects = satellites;
 
 // Füge den OutlinePass zu deinem finalComposer hinzu oder als separaten Pass
 finalComposer.addPass(outlinePass);
@@ -147,6 +146,8 @@ for (let i = 0; i < satelliteCount; i++) {
   satellites.push(satellite);
   scene.add(satellite);
 }
+
+outlinePass.selectedObjects = satellites;
 
 // ================= Clock =================
 
