@@ -337,13 +337,24 @@ function attachRNBOMessages(device, context) {
   // --- Rec-Parameter Integration ---
   const recParam = device.parametersById.get("rec");
   if (recParam) {
+    // Falls du rec weiterhin nutzen möchtest, kannst du es hier abfragen (optional)
     device.parameterChangeEvent.subscribe(param => {
       if (param.id === recParam.id && param.value === 0) {
-        startWaveformVisualization(device, context);
+        // Option: Hier kannst du rec nutzen, um etwas zu triggern – falls gewünscht
+        console.log("rec changed to 0");
       }
     });
   }
   
+  // Recdone-Parameter: Wenn recdone den Wert 1 hat, starte die Visualisierung
+  device.parameterChangeEvent.subscribe(param => {
+    if (param.id === "recdone" && parseInt(param.value) === 1) {
+      startWaveformVisualization(device, context);
+      console.log("recdone ausgelöst: Waveform-Visualisierung gestartet");
+    }
+  });
+  
+  // Rec-Button Steuerung (HTML-Element mit ID "rec" muss existieren)
   const recButton = document.getElementById("rec");
   if (recButton && recParam) {
     recButton.addEventListener("click", () => {
