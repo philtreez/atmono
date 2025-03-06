@@ -84,6 +84,8 @@ const material = new THREE.MeshBasicMaterial({
 const morphObject = new THREE.Mesh(geometry, material);
 scene.add(morphObject);
 
+// ================= Zufällige Geometrien für Satelliten =================
+
 function createRandomGeometry() {
   const choice = Math.floor(Math.random() * 4);
   switch (choice) {
@@ -119,7 +121,6 @@ const satelliteCount = 8;
 for (let i = 0; i < satelliteCount; i++) {
   // Verwende zufällige Geometrie statt einer Kugel
   const satGeometry = createRandomGeometry();
-  
   // Material im Wireframe-Modus beibehalten
   const satMaterial = new THREE.MeshStandardMaterial({
     color: 0xffffff,
@@ -147,17 +148,15 @@ for (let i = 0; i < satelliteCount; i++) {
 
 // ================= Clock =================
 
-// Stelle sicher, dass dieser Clock nur einmal initialisiert wird!
 const clock = new THREE.Clock();
 
 function animate() {
   requestAnimationFrame(animate);
   
-  // Nur einmal Delta berechnen
   const delta = clock.getDelta();
-  console.log("delta:", delta); // Debug-Ausgabe
+  // Debug: console.log("delta:", delta);
   
-  // Update des Hauptobjekts (morphObject) – wie gehabt
+  // Update des Hauptobjekts (morphObject) – Morphing bleibt erhalten
   const positions = morphObject.geometry.attributes.position.array;
   const origPositions = morphObject.geometry.userData.origPositions;
   const vertexCount = positions.length / 3;
@@ -177,58 +176,26 @@ function animate() {
   morphObject.geometry.attributes.position.needsUpdate = true;
   morphObject.rotation.x += 0.005;
   morphObject.rotation.y += 0.005;
-
-  // Update der Satelliten
+  
+  // Update der Satelliten: Orbit und Rotation (kein Morphing!)
   satellites.forEach((satellite, index) => {
-    // Orbit-Update (wie gehabt)
     satellite.userData.angle += satellite.userData.orbitSpeed * delta;
     satellite.position.x = morphObject.position.x + satellite.userData.orbitRadius * Math.cos(satellite.userData.angle) * Math.cos(satellite.userData.inclination);
     satellite.position.y = morphObject.position.y + satellite.userData.orbitRadius * Math.sin(satellite.userData.inclination);
     satellite.position.z = morphObject.position.z + satellite.userData.orbitRadius * Math.sin(satellite.userData.angle) * Math.cos(satellite.userData.inclination);
     
-    // Eigene Rotation um die Achse
     satellite.rotation.y += satellite.userData.selfRotationSpeed * delta;
-    
-    // Morphing: Verschiebe die Vertices entlang ihrer Normalen
-    const positions = satellite.geometry.attributes.position.array;
-    const normals = satellite.geometry.attributes.normal.array;
-    const origPositions = satellite.geometry.userData.origPositions;
-    const vertexCount = positions.length / 3;
-    
-    // Berechne den Versatz (displacement) für diesen Satelliten
-    const displacement = Math.sin(clock.getElapsedTime() * satellite.userData.morphFrequency + satellite.userData.morphPhase)
-                         * satellite.userData.morphIntensity;
-    
-    for (let i = 0; i < vertexCount; i++) {
-      const ix = i * 3;
-      const ox = origPositions[ix];
-      const oy = origPositions[ix + 1];
-      const oz = origPositions[ix + 2];
-      // Greife auf den Normalenvektor zu
-      const nx = normals[ix];
-      const ny = normals[ix + 1];
-      const nz = normals[ix + 2];
-      // Verschiebe entlang der Normalen (ohne uniform zu skalieren)
-      positions[ix]     = ox + nx * displacement;
-      positions[ix + 1] = oy + ny * displacement;
-      positions[ix + 2] = oz + nz * displacement;
-    }
-    satellite.geometry.attributes.position.needsUpdate = true;
-    
-    // Optional: Debug-Ausgabe für den ersten Satelliten
-    if (index === 0) {
-      console.log("Satellite 0 angle:", satellite.userData.angle.toFixed(2));
-    }
-  });  
-
+  });
+  
   // Optionale Kamera-Bewegung
   camera.position.x = Math.sin(clock.getElapsedTime() * 0.2) * 0.2;
   camera.rotation.y = Math.sin(clock.getElapsedTime() * 0.3) * 0.1;
-
+  
   composer.render();
 }
 
 animate();
+
 
 
 
