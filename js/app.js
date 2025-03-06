@@ -610,16 +610,18 @@ function setupPlaystatSlider() {
   const sliderWidth = slider.offsetWidth;
   const thumbWidth = thumb.offsetWidth;
   const maxMovement = sliderWidth - thumbWidth;
-  // Hier kannst du den gewünschten Initialwert für playstat einstellen (zwischen 0 und 1)
+  // Initialer Wert für playstat (zwischen 0 und 1)
   const initialValue = 0.5;
   const initialX = maxMovement * initialValue;
   thumb.style.left = initialX + "px";
   sendValueToRNBO("playstat", initialValue);
+  
   let isDragging = false;
   thumb.addEventListener("mousedown", (e) => {
     isDragging = true;
     e.preventDefault();
   });
+  
   document.addEventListener("mousemove", (e) => {
     if (!isDragging) return;
     const sliderRect = slider.getBoundingClientRect();
@@ -629,6 +631,7 @@ function setupPlaystatSlider() {
     const normalizedValue = newX / maxMovement;
     sendValueToRNBO("playstat", normalizedValue);
   });
+  
   document.addEventListener("mouseup", () => { isDragging = false; });
 }
 
@@ -702,4 +705,5 @@ document.addEventListener("DOMContentLoaded", () => {
   setupVolumeSlider();
   setupVerticalSliders();
   setupButtons();
+  setupPlaystatSlider();
 });
