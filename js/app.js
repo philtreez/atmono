@@ -281,6 +281,25 @@ async function setupRNBO() {
 
 setupRNBO();
 
+const recParam = device.parametersById.get("rec");
+if (recParam) {
+    device.parameterChangeEvent.subscribe((param) => {
+        if (param.id === recParam.id && param.value === 0) {
+            startWaveformVisualization(device, context);
+        }
+    });
+}
+
+// ------ Rec-Button Steuerung ------
+const recButton = document.getElementById("rec");
+if (recButton && recParam) {
+    recButton.addEventListener("click", () => {
+        const newValue = recParam.value === 0 ? 1 : 0;
+        recParam.value = newValue;
+        console.log(`Rec state set to: ${newValue}`);
+    });
+}
+
 function loadRNBOScript(version) {
   return new Promise((resolve, reject) => {
     if (/^\d+\.\d+\.\d+-dev$/.test(version)) {
@@ -632,6 +651,56 @@ function updateButtonFromRNBO(id, value) {
   if (button) {
     button.dataset.value = value.toString();
     button.style.opacity = (parseInt(value) === 1) ? "1" : "0";
+  }
+}
+
+async function startWaveformVisualization(device, context) {
+  const bufferDescription = device.dataBufferDescriptions.find(desc => desc.id === "lulu");
+  if (!bufferDescription) {
+      console.error("Buffer 'lulu' not found in RNBO device.");
+      return;
+  }
+
+  try {
+      const dataBuffer = await device.releaseDataBuffer(bufferDescription.id);
+      const audioBuffer = await dataBuffer.getAsAudioBuffer(context);
+      const canvas = document.getElementById("waveformCanvas");
+      if (!canvas || !canvas.getContext) {
+          console.error("waveformCanvas not found or not a valid canvas element.");
+          return;
+      }
+
+      // Setze das Canvas auf die im Designer definierte Größe
+      const ctx = canvas.getContext("2d");
+
+      function draw() {
+          const channelData = audioBuffer.getChannelData(0);
+          const step = Math.ceil(channelData.length / canvas.width); // Schrittgröße pro Pixel
+          const amp = canvas.height / 2;
+
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.beginPath();
+          ctx.moveTo(0, amp);
+
+          for (let i = 0; i < canvas.width; i++) {
+              const min = channelData[i * step];
+              const max = channelData[i * step];
+              ctx.lineTo(i, amp + min * amp);
+              ctx.lineTo(i, amp + max * amp);
+          }
+
+          ctx.strokeStyle = "white";
+          ctx.lineWidth = 1;
+          ctx.stroke();
+      }
+
+      draw(); // Einmalige Visualisierung nach Aufnahmeende
+
+      // Buffer wieder in den RNBO-Patcher laden, um Abspielen zu ermöglichen
+      await device.setDataBuffer(bufferDescription.id, audioBuffer);
+
+  } catch (error) {
+      console.error("Error retrieving audio buffer:", error);
   }
 }
 
