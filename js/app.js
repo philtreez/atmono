@@ -29,7 +29,7 @@ const bloomPass = new THREE.UnrealBloomPass(
 );
 bloomPass.threshold = 0;
 bloomPass.strength = 1.5;
-bloomPass.radius = 0.55;
+bloomPass.radius = 1.3;
 
 const bloomComposer = new THREE.EffectComposer(renderer);
 bloomComposer.renderToScreen = false;
