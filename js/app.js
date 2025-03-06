@@ -46,8 +46,8 @@ const outlinePass = new THREE.OutlinePass(
   camera
 );
 outlinePass.edgeStrength = 3.0;     
-outlinePass.edgeGlow = 2.0;         
-outlinePass.edgeThickness = 1.0;    
+outlinePass.edgeGlow = 4.0;         
+outlinePass.edgeThickness = 2.0;    
 outlinePass.visibleEdgeColor.set('#ffffff');
 outlinePass.hiddenEdgeColor.set('#190a05');
 
@@ -139,7 +139,7 @@ for (let i = 0; i < satelliteCount; i++) {
     color: 0xffffff,
     wireframe: true,
     emissive: 0xffffff,
-    emissiveIntensity: 0.2
+    emissiveIntensity: 0.3
   });
   const satellite = new THREE.Mesh(satGeometry, satMaterial);
   
