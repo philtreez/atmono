@@ -667,7 +667,7 @@ function setupButtons() {
         // Kurzes Delay, damit der Buffer ggf. aktualisiert wurde
         setTimeout(() => {
           visualizeBuffer("lulu");
-        }, 100);
+        }, 10);
       }
     });
   });
