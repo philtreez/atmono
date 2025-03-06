@@ -45,9 +45,9 @@ const outlinePass = new THREE.OutlinePass(
   scene, 
   camera
 );
-outlinePass.edgeStrength = 10.0;     
-outlinePass.edgeGlow = 12.0;         
-outlinePass.edgeThickness = 5.0;    
+outlinePass.edgeStrength = 1.0;     
+outlinePass.edgeGlow = 2.0;         
+outlinePass.edgeThickness = 0.5;    
 outlinePass.visibleEdgeColor.set('#ffffff');
 outlinePass.hiddenEdgeColor.set('#000000');
 
