@@ -252,7 +252,7 @@ async function setupRNBO() {
   
   // Analyser Node hinzufügen:
   const analyser = context.createAnalyser();
-  analyser.fftSize = 1024;
+  analyser.fftSize = 512;
   window.rnboAnalyser = analyser;  // Global speichern, damit das Oszilloskop darauf zugreifen kann
   outputNode.connect(analyser);
   
@@ -342,7 +342,7 @@ function drawOscilloscopeFrame() {
   }
   
   // Zeichne Wellenform
-  ctx.lineWidth = 2;
+  ctx.lineWidth = 3;
   ctx.strokeStyle = 'white';
   ctx.beginPath();
   const sliceWidth = canvas.width / bufferLength;
