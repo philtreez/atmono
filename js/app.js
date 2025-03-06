@@ -311,7 +311,7 @@ async function setupRNBO() {
   document.body.onclick = () => context.resume();
   
   // Starte das Oszilloskop, wenn der Analyser vorhanden ist
-  setupOscilloscope();
+  drawOscilloscopeFrame();
 }
 
 function loadRNBOScript(version) {
