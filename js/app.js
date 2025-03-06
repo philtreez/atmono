@@ -236,19 +236,6 @@ function triggerSeqlight() {
   }, 100);
 }
 
-// ================= RNBO Integration =================
-document.addEventListener("DOMContentLoaded", () => {
-  // Optional: Überprüfe, ob das Canvas-Element existiert
-  const waveformCanvas = document.getElementById("waveformCanvas");
-  if (!waveformCanvas) {
-    console.error("waveformCanvas not found or not a valid canvas element.");
-    return;
-  }
-
-  // Starte die RNBO-Setup-Funktion, sobald der DOM geladen ist
-  setupRNBO();
-});
-
 // ---------------- RNBO Integration Code ----------------
 
 window.rnboDevice = null;
@@ -329,18 +316,60 @@ function flushParameterQueue() {
   }
 }
 
+function visualizeWaveform(samples) {
+  const canvas = document.getElementById("waveform");
+  if (!canvas) {
+    console.warn("Kein Canvas-Element mit der ID 'waveform' gefunden.");
+    return;
+  }
+  const ctx = canvas.getContext("2d");
+  // Canvas leeren
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  
+  // Zeichne eine Linie, die den Verlauf der Amplitude darstellt.
+  ctx.beginPath();
+  const step = Math.floor(samples.length / canvas.width);
+  for (let i = 0; i < canvas.width; i++) {
+    const sampleIndex = i * step;
+    const sample = samples[sampleIndex];
+    // Normalisiere den Samplewert (-1 bis 1) auf die Canvas-Höhe
+    const y = (1 - (sample + 1) / 2) * canvas.height;
+    if (i === 0) {
+      ctx.moveTo(i, y);
+    } else {
+      ctx.lineTo(i, y);
+    }
+  }
+  ctx.stroke();
+}
+
+// Holt den AudioBuffer aus dem RNBO-Gerät mithilfe der releaseDataBuffer‑Methode
+// und visualisiert anschließend den ersten Kanal
+function visualizeBuffer(bufferName) {
+  if (!window.rnboDevice || typeof window.rnboDevice.releaseDataBuffer !== 'function') {
+    console.warn("RNBO device oder releaseDataBuffer Funktion nicht verfügbar.");
+    return;
+  }
+  
+  window.rnboDevice.releaseDataBuffer(bufferName)
+    .then(audioBuffer => {
+      if (!audioBuffer) {
+        console.warn("Kein AudioBuffer von " + bufferName + " erhalten.");
+        return;
+      }
+      // Verwende den ersten Kanal zur Visualisierung
+      const channelData = audioBuffer.getChannelData(0);
+      visualizeWaveform(channelData);
+    })
+    .catch(err => {
+      console.error("Fehler beim Abrufen des DataBuffers: ", err);
+    });
+}
+
 // ---------------- Steuerung: RNBO Nachrichten ----------------
 
 function attachRNBOMessages(device, context) {
   const controlIds = ["s1", "s2", "s3", "s4", "s5", "s6", "s7", "s8", "vol", "b1", "b2", "b3", "b4", "b5", "b6", "b7", "b8", "rndm", "rec"];
-  
-  // Recdone-Parameter: Wenn recdone den Wert 1 hat, starte die Visualisierung
-  device.parameterChangeEvent.subscribe(param => {
-    if (param.id === "recdone" && parseInt(param.value) === 1) {
-      startWaveformVisualization(device, context);
-      console.log("recdone ausgelöst: Waveform-Visualisierung gestartet");
-    }
-  });
   
   // --- Restliche Parameter-Integration ---
   if (device.parameterChangeEvent) {
@@ -433,43 +462,6 @@ function attachRNBOMessages(device, context) {
       }
       console.log(`Message ${ev.tag}: ${ev.payload}`);
     });
-  }
-}
-
-async function startWaveformVisualization(device, context) {
-  const bufferDescription = device.dataBufferDescriptions.find(desc => desc.id === "gli");
-  if (!bufferDescription) {
-    console.error("Buffer 'gli' not found in RNBO device.");
-    return;
-  }
-  try {
-    const dataBuffer = await device.releaseDataBuffer(bufferDescription.id);
-    const audioBuffer = await dataBuffer.getAsAudioBuffer(context);
-    const canvas = document.getElementById("waveformCanvas");
-    if (!canvas || !canvas.getContext) {
-      console.error("waveformCanvas not found or not a valid canvas element.");
-      return;
-    }
-    const ctx = canvas.getContext("2d");
-    function draw() {
-      const channelData = audioBuffer.getChannelData(0);
-      const step = Math.ceil(channelData.length / canvas.width);
-      const amp = canvas.height / 2;
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.beginPath();
-      ctx.moveTo(0, amp);
-      for (let i = 0; i < canvas.width; i++) {
-        const sample = channelData[i * step];
-        ctx.lineTo(i, amp + sample * amp);
-      }
-      ctx.strokeStyle = "white";
-      ctx.lineWidth = 1;
-      ctx.stroke();
-    }
-    draw(); // Einmalige Visualisierung nach Aufnahmeende
-    await device.setDataBuffer(bufferDescription.id, audioBuffer);
-  } catch (error) {
-    console.error("Error retrieving audio buffer:", error);
   }
 }
 
@@ -622,6 +614,15 @@ function setupButtons() {
       button.dataset.value = newValue.toString();
       button.style.opacity = (newValue === 1) ? "1" : "0";
       sendValueToRNBO(id, newValue);
+
+      // Wenn der "rec"-Button von 1 (Aufnahme läuft) auf 0 (Aufnahme beendet) wechselt,
+      // dann den Buffer "lulu" auslesen und visualisieren.
+      if (id === "rec" && newValue === 0) {
+        // Kurzes Delay, damit der Buffer ggf. aktualisiert wurde
+        setTimeout(() => {
+          visualizeBuffer("lulu");
+        }, 100);
+      }
     });
   });
 }
