@@ -84,17 +84,43 @@ const material = new THREE.MeshBasicMaterial({
 const morphObject = new THREE.Mesh(geometry, material);
 scene.add(morphObject);
 
-// ================= Satelliten (Orbit um das Hauptobjekt) =================
+function createRandomGeometry() {
+  const choice = Math.floor(Math.random() * 4);
+  switch (choice) {
+    case 0:
+      // Box: zufällige Größe zwischen 0.2 und 0.4
+      const boxSize = 0.2 + Math.random() * 0.2;
+      return new THREE.BoxGeometry(boxSize, boxSize, boxSize);
+    case 1:
+      // Cone: Basisradius, Höhe und Radialsegmente zufällig wählen
+      const coneRadius = 0.15 + Math.random() * 0.15;
+      const coneHeight = 0.3 + Math.random() * 0.2;
+      return new THREE.ConeGeometry(coneRadius, coneHeight, 16);
+    case 2:
+      // Torus: zufälliger Haupt- und Tubusradius
+      const torusRadius = 0.2 + Math.random() * 0.2;
+      const tubeRadius = 0.05 + Math.random() * 0.1;
+      return new THREE.TorusGeometry(torusRadius, tubeRadius, 16, 32);
+    case 3:
+      // Cylinder: zufälliger Ober- und Unterradius, Höhe
+      const cylTop = 0.1 + Math.random() * 0.1;
+      const cylBottom = 0.1 + Math.random() * 0.1;
+      const cylHeight = 0.3 + Math.random() * 0.2;
+      return new THREE.CylinderGeometry(cylTop, cylBottom, cylHeight, 16);
+    default:
+      return new THREE.SphereGeometry(0.2, 32, 32);
+  }
+}
+
 // ================= Satelliten (Orbit um das Hauptobjekt) =================
 const satellites = [];
 const satelliteCount = 8;
 
 for (let i = 0; i < satelliteCount; i++) {
-  const radius = 0.15 + Math.random() * 0.15;
-  const satGeometry = new THREE.SphereGeometry(radius, 16, 64);
-  // Speichere die ursprünglichen Vertex-Positionen
-  satGeometry.userData.origPositions = satGeometry.attributes.position.array.slice(0);
+  // Verwende zufällige Geometrie statt einer Kugel
+  const satGeometry = createRandomGeometry();
   
+  // Material im Wireframe-Modus beibehalten
   const satMaterial = new THREE.MeshStandardMaterial({
     color: 0xffffff,
     wireframe: true,
@@ -103,20 +129,14 @@ for (let i = 0; i < satelliteCount; i++) {
   });
   const satellite = new THREE.Mesh(satGeometry, satMaterial);
   
-  // Setze Orbit-Parameter (wie zuvor)
+  // Orbit-Parameter
   satellite.userData.angle = (i / satelliteCount) * Math.PI * 2;
   satellite.userData.inclination = (Math.random() - 0.5) * (Math.PI / 3);
   satellite.userData.orbitRadius = 2 + Math.random() * 2;
   satellite.userData.orbitSpeed = 0.2 + Math.random() * 0.8;
   satellite.userData.selfRotationSpeed = 0.2 + Math.random() * 0.5;
   
-  // Individuelle Morphing-Parameter (kleine Werte, damit die Verformung subtil bleibt)
-  satellite.userData.morphIntensity = 0.02 + Math.random() * 0.02; // Verschiebung entlang der Normal
-  satellite.userData.morphFrequency = 128.0 + Math.random() * 2.0;
-  // Zufälliger Phasenwert, um asynchrone Morphing-Effekte zu erzielen
-  satellite.userData.morphPhase = Math.random() * Math.PI * 2;
-  
-  // Initiale Positionierung (wie gehabt)
+  // Positionierung des Satelliten im Orbit um das Hauptobjekt
   satellite.position.x = morphObject.position.x + satellite.userData.orbitRadius * Math.cos(satellite.userData.angle) * Math.cos(satellite.userData.inclination);
   satellite.position.y = morphObject.position.y + satellite.userData.orbitRadius * Math.sin(satellite.userData.inclination);
   satellite.position.z = morphObject.position.z + satellite.userData.orbitRadius * Math.sin(satellite.userData.angle) * Math.cos(satellite.userData.inclination);
