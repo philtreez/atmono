@@ -250,6 +250,12 @@ async function setupRNBO() {
   const outputNode = context.createGain();
   outputNode.connect(context.destination);
   
+  // Analyser Node hinzufügen:
+  const analyser = context.createAnalyser();
+  analyser.fftSize = 2048;
+  window.rnboAnalyser = analyser;  // Global speichern, damit das Oszilloskop darauf zugreifen kann
+  outputNode.connect(analyser);
+  
   let response, patcher;
   try {
     response = await fetch(patchExportURL);
@@ -278,6 +284,9 @@ async function setupRNBO() {
   flushParameterQueue();
   
   document.body.onclick = () => context.resume();
+  
+  // Starte das Oszilloskop, wenn der Analyser vorhanden ist
+  setupOscilloscope();
 }
 
 function loadRNBOScript(version) {
@@ -293,6 +302,56 @@ function loadRNBOScript(version) {
     };
     document.body.appendChild(el);
   });
+}
+
+function setupOscilloscope() {
+  const canvas = document.getElementById("oscilloscope");
+  if (!canvas) {
+    console.error("Kein Oscilloskop-Canvas gefunden!");
+    return;
+  }
+  const ctx = canvas.getContext("2d");
+  
+  const analyser = window.rnboAnalyser;
+  if (!analyser) {
+    console.error("Kein Analyser verfügbar.");
+    return;
+  }
+  const bufferLength = analyser.fftSize;
+  const dataArray = new Uint8Array(bufferLength);
+
+  function draw() {
+    requestAnimationFrame(draw);
+    
+    // Zeitbereichsdaten abrufen
+    analyser.getByteTimeDomainData(dataArray);
+    
+    // Canvas leeren
+    ctx.fillStyle = 'rgb(255, 255, 255)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Oszilloskop-Wellenform zeichnen
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = 'rgb(0, 255, 0)';
+    ctx.beginPath();
+    
+    const sliceWidth = canvas.width / bufferLength;
+    let x = 0;
+    for (let i = 0; i < bufferLength; i++) {
+      const v = dataArray[i] / 128.0; // Normierung: 128 entspricht Mittelwert
+      const y = v * canvas.height / 2;
+      if (i === 0) {
+        ctx.moveTo(x, y);
+      } else {
+        ctx.lineTo(x, y);
+      }
+      x += sliceWidth;
+    }
+    ctx.lineTo(canvas.width, canvas.height / 2);
+    ctx.stroke();
+  }
+  
+  draw();
 }
 
 function sendValueToRNBO(param, value) {
