@@ -147,8 +147,8 @@ for (let i = 0; i < satelliteCount; i++) {
   const satMaterial = new THREE.MeshStandardMaterial({
     color: 0xffffff,
     wireframe: true,
-    emissive: new THREE.Color(Math.random(), Math.random(), Math.random()),
-    emissiveIntensity: 0.2 + Math.random() * 0.8
+    emissive: 0xffffff,  // Feste weiße Emissive-Farbe
+    emissiveIntensity: 0.2 + Math.random() * 1.5  // Unterschiedliche Glow-Stärken  
   });
   const satellite = new THREE.Mesh(satGeometry, satMaterial);
   
