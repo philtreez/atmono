@@ -31,15 +31,27 @@ bloomPass.strength = 0.5;
 bloomPass.radius = 0.35;
 composer.addPass(bloomPass);
 
-// Erstelle OutlinePass (zum Beispiel für die komplette Szene)
-const outlinePass = new THREE.OutlinePass(new THREE.Vector2(window.innerWidth, window.innerHeight), scene, camera);
-outlinePass.edgeStrength = 3.0;     // Stärke des Outlines
-outlinePass.edgeGlow = 1.0;         // optional, für Glow-Effekt
-outlinePass.edgeThickness = 1.0;    // Dicke der Kontur
-outlinePass.visibleEdgeColor.set('#ffffff'); // weiße Kontur
-outlinePass.hiddenEdgeColor.set('#190a05');    // Farbe für verdeckte Kanten
+// Erstelle den finalPass und finalComposer
+const finalPass = new THREE.ShaderPass( THREE.CopyShader );
+finalPass.renderToScreen = true;
 
-// Füge den OutlinePass zu deinem finalComposer hinzu oder als separaten Pass
+const finalComposer = new THREE.EffectComposer(renderer);
+finalComposer.addPass(renderScene);
+finalComposer.addPass(finalPass);
+
+// Erstelle den OutlinePass
+const outlinePass = new THREE.OutlinePass(
+  new THREE.Vector2(window.innerWidth, window.innerHeight), 
+  scene, 
+  camera
+);
+outlinePass.edgeStrength = 3.0;     
+outlinePass.edgeGlow = 2.0;         
+outlinePass.edgeThickness = 1.0;    
+outlinePass.visibleEdgeColor.set('#ffffff');
+outlinePass.hiddenEdgeColor.set('#190a05');
+
+// Füge den OutlinePass zum finalComposer hinzu
 finalComposer.addPass(outlinePass);
 
 
