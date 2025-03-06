@@ -36,7 +36,7 @@ const finalPass = new THREE.ShaderPass( THREE.CopyShader );
 finalPass.renderToScreen = true;
 
 const finalComposer = new THREE.EffectComposer(renderer);
-finalComposer.addPass(renderScene);
+finalComposer.addPass(renderPass);
 finalComposer.addPass(finalPass);
 
 // Erstelle den OutlinePass
