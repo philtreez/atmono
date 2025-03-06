@@ -317,29 +317,50 @@ function setupOscilloscope() {
     console.error("Kein Analyser verfügbar.");
     return;
   }
+  
+  // Du kannst die fftSize je nach gewünschter Detailtiefe anpassen.
+  // Größere fftSize -> mehr Datenpunkte, aber potenziell geringere Performance.
+  analyser.fftSize = 2048; 
   const bufferLength = analyser.fftSize;
   const dataArray = new Uint8Array(bufferLength);
 
   function draw() {
     requestAnimationFrame(draw);
     
-    // Zeitbereichsdaten abrufen
     analyser.getByteTimeDomainData(dataArray);
     
-    // Canvas leeren
-    ctx.fillStyle = 'rgba(255, 255, 255, 0)';
+    // Hintergrund so setzen, dass es wie ein Oszilloskop wirkt.
+    ctx.fillStyle = 'rgb(10, 10, 10)';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
-    // Oszilloskop-Wellenform zeichnen
-    ctx.lineWidth = 2;
-    ctx.strokeStyle = 'rgb(255, 255, 255)';
-    ctx.beginPath();
+    // Gitterlinien zeichnen, um das Oszilloskop-Feeling zu verstärken
+    ctx.strokeStyle = 'rgba(50, 50, 50, 0.5)';
+    ctx.lineWidth = 1;
+    const gridSpacing = 50;
+    for (let x = gridSpacing; x < canvas.width; x += gridSpacing) {
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, canvas.height);
+      ctx.stroke();
+    }
+    for (let y = gridSpacing; y < canvas.height; y += gridSpacing) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(canvas.width, y);
+      ctx.stroke();
+    }
     
+    // Wellenform zeichnen
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = 'lime';
+    ctx.beginPath();
     const sliceWidth = canvas.width / bufferLength;
     let x = 0;
     for (let i = 0; i < bufferLength; i++) {
-      const v = dataArray[i] / 128.0; // Normierung: 128 entspricht Mittelwert
-      const y = v * canvas.height / 2;
+      // Die Werte liegen zwischen 0 und 255. Mit 128 ist der Mittelwert.
+      const v = (dataArray[i] - 128) / 128; // Werte von -1 bis 1
+      // Skaliere den Wert, sodass er den vertikalen Mittelwert stärker betont
+      const y = canvas.height/2 + v * canvas.height/2 * 0.9; 
       if (i === 0) {
         ctx.moveTo(x, y);
       } else {
@@ -347,7 +368,6 @@ function setupOscilloscope() {
       }
       x += sliceWidth;
     }
-    ctx.lineTo(canvas.width, canvas.height / 2);
     ctx.stroke();
   }
   
