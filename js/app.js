@@ -418,12 +418,12 @@ function attachRNBOMessages(device, context) {
         updatePlaystatSliderFromRNBO(value);
         console.log("playstat aktualisiert: ", value);
       }
-      // Spezielle Behandlung von rndm und rec als Buttons
+      // Für "rndm" und "rec" als Buttons
       else if (param.id === "rndm" || param.id === "rec") {
         updateButtonFromRNBO(param.id, parseFloat(param.value));
         console.log(`${param.id} aktualisiert: ${param.value}`);
       }
-      // Restliche Parameterbehandlung
+      // Für andere Parameter, die Slider oder Buttons sein könnten
       else if (controlIds.includes(param.id)) {
         if (param.id.startsWith("b")) {
           updateButtonFromRNBO(param.id, parseFloat(param.value));
