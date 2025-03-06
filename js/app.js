@@ -304,75 +304,61 @@ function loadRNBOScript(version) {
   });
 }
 
-function setupOscilloscope() {
+// Zeichnet einen einzelnen Oszilloskop-Frame
+function drawOscilloscopeFrame() {
   const canvas = document.getElementById("oscilloscope");
   if (!canvas) {
     console.error("Kein Oscilloskop-Canvas gefunden!");
     return;
   }
   const ctx = canvas.getContext("2d");
-  
   const analyser = window.rnboAnalyser;
   if (!analyser) {
     console.error("Kein Analyser verfügbar.");
     return;
   }
   
-  // Du kannst die fftSize je nach gewünschter Detailtiefe anpassen.
-  // Größere fftSize -> mehr Datenpunkte, aber potenziell geringere Performance.
-  analyser.fftSize = 2048; 
   const bufferLength = analyser.fftSize;
-  const dataArray = new Uint8Array(bufferLength);
-
-  function draw() {
-    requestAnimationFrame(draw);
-    
-    analyser.getByteTimeDomainData(dataArray);
-    
-    // Hintergrund so setzen, dass es wie ein Oszilloskop wirkt.
-    ctx.fillStyle = 'rgb(10, 10, 10)';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    
-    // Gitterlinien zeichnen, um das Oszilloskop-Feeling zu verstärken
-    ctx.strokeStyle = 'rgba(50, 50, 50, 0.5)';
-    ctx.lineWidth = 1;
-    const gridSpacing = 50;
-    for (let x = gridSpacing; x < canvas.width; x += gridSpacing) {
-      ctx.beginPath();
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x, canvas.height);
-      ctx.stroke();
-    }
-    for (let y = gridSpacing; y < canvas.height; y += gridSpacing) {
-      ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(canvas.width, y);
-      ctx.stroke();
-    }
-    
-    // Wellenform zeichnen
-    ctx.lineWidth = 2;
-    ctx.strokeStyle = 'lime';
+  const dataArray = new Float32Array(bufferLength);
+  analyser.getFloatTimeDomainData(dataArray);
+  
+  // Hintergrund und Gitter zeichnen
+  ctx.fillStyle = 'rgb(10, 10, 10)';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.strokeStyle = 'rgba(50, 50, 50, 0.5)';
+  ctx.lineWidth = 1;
+  const gridSpacing = 15;
+  for (let x = gridSpacing; x < canvas.width; x += gridSpacing) {
     ctx.beginPath();
-    const sliceWidth = canvas.width / bufferLength;
-    let x = 0;
-    for (let i = 0; i < bufferLength; i++) {
-      // Die Werte liegen zwischen 0 und 255. Mit 128 ist der Mittelwert.
-      const v = (dataArray[i] - 128) / 128; // Werte von -1 bis 1
-      // Skaliere den Wert, sodass er den vertikalen Mittelwert stärker betont
-      const y = canvas.height/2 + v * canvas.height/2 * 0.9; 
-      if (i === 0) {
-        ctx.moveTo(x, y);
-      } else {
-        ctx.lineTo(x, y);
-      }
-      x += sliceWidth;
-    }
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, canvas.height);
+    ctx.stroke();
+  }
+  for (let y = gridSpacing; y < canvas.height; y += gridSpacing) {
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(canvas.width, y);
     ctx.stroke();
   }
   
-  draw();
+  // Zeichne Wellenform
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = 'white';
+  ctx.beginPath();
+  const sliceWidth = canvas.width / bufferLength;
+  let x = 0;
+  for (let i = 0; i < bufferLength; i++) {
+    const y = canvas.height / 2 + dataArray[i] * (canvas.height / 2 * 0.9);
+    if (i === 0) {
+      ctx.moveTo(x, y);
+    } else {
+      ctx.lineTo(x, y);
+    }
+    x += sliceWidth;
+  }
+  ctx.stroke();
 }
+
 
 function sendValueToRNBO(param, value) {
   if (window.device && window.device.parametersById && window.device.parametersById.has(param)) {
@@ -584,6 +570,11 @@ function attachRNBOMessages(device, context) {
 
 function attachOutports(device) {
   device.messageEvent.subscribe(ev => {
+    if (ev.tag === "trig16th") {
+      // Jedes Mal, wenn der Trigger aus RNBO kommt (jede 16tel Note), wird ein Frame gezeichnet
+      drawOscilloscopeFrame();
+      console.log("Oscilloscope getriggert (16tel Note)");
+    }
     if (ev.tag === "glitchy") {
       glitchPass.enabled = (parseInt(ev.payload) === 1);
     }
