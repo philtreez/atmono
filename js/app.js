@@ -348,7 +348,7 @@ function drawOscilloscopeFrame() {
   const sliceWidth = canvas.width / bufferLength;
   let x = 0;
   for (let i = 0; i < bufferLength; i++) {
-    const y = canvas.height / 2 + dataArray[i] * (canvas.height / 2 * 0.9);
+    const y = canvas.height / 2 + dataArray[i] * (canvas.height / 2 * 5);
     if (i === 0) {
       ctx.moveTo(x, y);
     } else {
