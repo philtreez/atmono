@@ -374,7 +374,7 @@ async function visualizeBuffer(bufferName) {
 // ---------------- Steuerung: RNBO Nachrichten ----------------
 
 function attachRNBOMessages(device, context) {
-  const controlIds = ["s1", "s2", "s3", "s4", "s5", "s6", "s7", "s8", "vol", "b1", "b2", "b3", "b4", "b5", "b6", "b7", "b8", "rndm", "rec", "playstat"];
+  const controlIds = ["s1", "s2", "s3", "s4", "s5", "s6", "s7", "s8", "vol", "b1", "b2", "b3", "b4", "b5", "b6", "b7", "b8", "rndm", "rec"];
   
   // --- Restliche Parameter-Integration ---
   if (device.parameterChangeEvent) {
@@ -408,6 +408,11 @@ function attachRNBOMessages(device, context) {
         const value = parseInt(param.value);
         updateRndmblinkTransparency(value);
         console.log("rndmblink aktualisiert: ", value);
+      }
+      if (param.id === "playstat") {
+        const value = parseInt(param.value);
+        updatePlaystatSliderFromRNBO(value);
+        console.log("playstat aktualisiert: ", value);
       }
       if (param.id === "bloomRadius") {
         bloomPass.radius = parseFloat(param.value);
@@ -453,6 +458,11 @@ function attachRNBOMessages(device, context) {
         const value = parseInt(ev.payload);
         updateRndmblinkTransparency(value);
         console.log("rndmblink aktualisiert: ", value);
+      }
+      if (ev.tag === "playstat") {
+        const value = parseInt(ev.payload);
+        updatePlaystatSliderFromRNBO(value);
+        console.log("playstat aktualisiert: ", value);
       }
       if (ev.tag === "bloomRadius") {
         bloomPass.radius = parseFloat(ev.payload);
