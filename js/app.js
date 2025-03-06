@@ -45,10 +45,10 @@ const outlinePass = new THREE.OutlinePass(
   scene, 
   camera
 );
-outlinePass.edgeStrength = 3.0;     
+outlinePass.edgeStrength = 10.0;     
 outlinePass.edgeGlow = 12.0;         
 outlinePass.edgeThickness = 5.0;    
-outlinePass.visibleEdgeColor.set('#ffffff');
+outlinePass.visibleEdgeColor.set('0xffffff');
 outlinePass.hiddenEdgeColor.set('#190a05');
 
 // Füge den OutlinePass zum finalComposer hinzu
