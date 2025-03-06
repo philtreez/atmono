@@ -332,19 +332,7 @@ function flushParameterQueue() {
 // ---------------- Steuerung: RNBO Nachrichten ----------------
 
 function attachRNBOMessages(device, context) {
-  const controlIds = ["s1", "s2", "s3", "s4", "s5", "s6", "s7", "s8", "vol", "b1", "b2", "b3", "b4", "b5", "b6", "b7", "b8", "rndm"];
-  
-  // --- Rec-Parameter Integration ---
-  const recParam = device.parametersById.get("rec");
-  if (recParam) {
-    // Falls du rec weiterhin nutzen möchtest, kannst du es hier abfragen (optional)
-    device.parameterChangeEvent.subscribe(param => {
-      if (param.id === recParam.id && param.value === 0) {
-        // Option: Hier kannst du rec nutzen, um etwas zu triggern – falls gewünscht
-        console.log("rec changed to 0");
-      }
-    });
-  }
+  const controlIds = ["s1", "s2", "s3", "s4", "s5", "s6", "s7", "s8", "vol", "b1", "b2", "b3", "b4", "b5", "b6", "b7", "b8", "rndm", "rec"];
   
   // Recdone-Parameter: Wenn recdone den Wert 1 hat, starte die Visualisierung
   device.parameterChangeEvent.subscribe(param => {
@@ -353,16 +341,6 @@ function attachRNBOMessages(device, context) {
       console.log("recdone ausgelöst: Waveform-Visualisierung gestartet");
     }
   });
-  
-  // Rec-Button Steuerung (HTML-Element mit ID "rec" muss existieren)
-  const recButton = document.getElementById("rec");
-  if (recButton && recParam) {
-    recButton.addEventListener("click", () => {
-      const newValue = recParam.value === 0 ? 1 : 0;
-      recParam.value = newValue;
-      console.log(`Rec state set to: ${newValue}`);
-    });
-  }
   
   // --- Restliche Parameter-Integration ---
   if (device.parameterChangeEvent) {
@@ -628,7 +606,7 @@ function updateVolumeSliderFromRNBO(value) {
 // ---------------- Button Setup (IDs: b1 ... b8, rndm) ----------------
 
 function setupButtons() {
-  const buttonIds = ["b1", "b2", "b3", "b4", "b5", "b6", "b7", "b8", "rndm"];
+  const buttonIds = ["b1", "b2", "b3", "b4", "b5", "b6", "b7", "b8", "rndm", "rec"];
   buttonIds.forEach(id => {
     const button = document.getElementById(id);
     if (!button) {
