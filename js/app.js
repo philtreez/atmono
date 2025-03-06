@@ -600,6 +600,47 @@ function updateVolumeSliderFromRNBO(value) {
   thumb.style.left = (value * maxMovement) + "px";
 }
 
+function setupPlaystatSlider() {
+  const slider = document.getElementById("playstat-slider");
+  const thumb = document.getElementById("playstat-thumb");
+  if (!slider || !thumb) {
+    console.error("Playstat slider elements not found!");
+    return;
+  }
+  const sliderWidth = slider.offsetWidth;
+  const thumbWidth = thumb.offsetWidth;
+  const maxMovement = sliderWidth - thumbWidth;
+  // Hier kannst du den gewünschten Initialwert für playstat einstellen (zwischen 0 und 1)
+  const initialValue = 0.5;
+  const initialX = maxMovement * initialValue;
+  thumb.style.left = initialX + "px";
+  sendValueToRNBO("playstat", initialValue);
+  let isDragging = false;
+  thumb.addEventListener("mousedown", (e) => {
+    isDragging = true;
+    e.preventDefault();
+  });
+  document.addEventListener("mousemove", (e) => {
+    if (!isDragging) return;
+    const sliderRect = slider.getBoundingClientRect();
+    let newX = e.clientX - sliderRect.left - (thumb.offsetWidth / 2);
+    newX = Math.max(0, Math.min(newX, maxMovement));
+    thumb.style.left = newX + "px";
+    const normalizedValue = newX / maxMovement;
+    sendValueToRNBO("playstat", normalizedValue);
+  });
+  document.addEventListener("mouseup", () => { isDragging = false; });
+}
+
+function updatePlaystatSliderFromRNBO(value) {
+  const slider = document.getElementById("playstat-slider");
+  const thumb = document.getElementById("playstat-thumb");
+  if (!slider || !thumb) return;
+  const maxMovement = slider.offsetWidth - thumb.offsetWidth;
+  thumb.style.left = (value * maxMovement) + "px";
+}
+
+
 // ---------------- Button Setup (IDs: b1 ... b8, rndm) ----------------
 
 function setupButtons() {
