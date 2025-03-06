@@ -111,8 +111,8 @@ for (let i = 0; i < satelliteCount; i++) {
   satellite.userData.selfRotationSpeed = 0.2 + Math.random() * 0.5;
   
   // Individuelle Morphing-Parameter (kleine Werte, damit die Verformung subtil bleibt)
-  satellite.userData.morphIntensity = 0.1 + Math.random() * 0.05; // Verschiebung entlang der Normal
-  satellite.userData.morphFrequency = 4.0 + Math.random() * 2.0;
+  satellite.userData.morphIntensity = 0.02 + Math.random() * 0.02; // Verschiebung entlang der Normal
+  satellite.userData.morphFrequency = 8.0 + Math.random() * 2.0;
   // Zufälliger Phasenwert, um asynchrone Morphing-Effekte zu erzielen
   satellite.userData.morphPhase = Math.random() * Math.PI * 2;
   
