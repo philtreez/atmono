@@ -374,7 +374,7 @@ async function visualizeBuffer(bufferName) {
 // ---------------- Steuerung: RNBO Nachrichten ----------------
 
 function attachRNBOMessages(device, context) {
-  const controlIds = ["s1", "s2", "s3", "s4", "s5", "s6", "s7", "s8", "vol", "b1", "b2", "b3", "b4", "b5", "b6", "b7", "b8", "rndm", "rec"];
+  const controlIds = ["s1", "s2", "s3", "s4", "s5", "s6", "s7", "s8", "vol", "playstat", "b1", "b2", "b3", "b4", "b5", "b6", "b7", "b8", "rndm", "rec"];
   
   // --- Restliche Parameter-Integration ---
   if (device.parameterChangeEvent) {
