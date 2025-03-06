@@ -11,63 +11,29 @@ const camera = new THREE.PerspectiveCamera(
 );
 camera.position.z = 5;
 
-// Standardrenderer
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 const threeContainer = document.getElementById("threejs-container") || document.body;
 threeContainer.appendChild(renderer.domElement);
 
-// Erstelle zwei Composer: Einen für den Bloom-Durchgang und einen finalen Composer
-const renderScene = new THREE.RenderPass(scene, camera);
+const composer = new THREE.EffectComposer(renderer);
+const renderPass = new THREE.RenderPass(scene, camera);
+composer.addPass(renderPass);
 
-// Bloom Composer: Rendert nur Objekte, die in der Bloom-Layer sind (Layer 1)
 const bloomPass = new THREE.UnrealBloomPass(
   new THREE.Vector2(window.innerWidth, window.innerHeight),
-  1.5,   // stärkere Werte hier, da nur selektiv angewendet
-  0.4,
-  0.85
+  0.5,  // Stärke
+  0.1,  // Radius
+  0.3   // Schwellenwert
 );
 bloomPass.threshold = 0;
-bloomPass.strength = 1.5;
-bloomPass.radius = 0.55;
+bloomPass.strength = 0.5;
+bloomPass.radius = 0.35;
+composer.addPass(bloomPass);
 
-const bloomComposer = new THREE.EffectComposer(renderer);
-bloomComposer.renderToScreen = false;
-bloomComposer.addPass(renderScene);
-bloomComposer.addPass(bloomPass);
-
-// Final Composer: Kombiniert die Basis-Szene und den Bloom-Durchgang
-const finalPass = new THREE.ShaderPass(
-  THREE.CopyShader
-);
-finalPass.renderToScreen = true;
-
-const finalComposer = new THREE.EffectComposer(renderer);
-finalComposer.addPass(renderScene);
-finalComposer.addPass(finalPass);
-
-// ================= Selective Bloom Helper =================
-
-const darkMaterial = new THREE.MeshBasicMaterial({ color: "black" });
-const materials = {};
-
-function darkenNonBloomed(obj) {
-  if (obj.isMesh && bloomLayer.test(obj.layers) === false) {
-    materials[obj.uuid] = obj.material;
-    obj.material = darkMaterial;
-  }
-}
-
-function restoreMaterial(obj) {
-  if (materials[obj.uuid]) {
-    obj.material = materials[obj.uuid];
-    delete materials[obj.uuid];
-  }
-}
-
-// Definiere den Bloom-Layer (Layer 1)
-const bloomLayer = new THREE.Layers();
-bloomLayer.set(1);
+const glitchPass = new THREE.GlitchPass();
+glitchPass.enabled = false;
+composer.addPass(glitchPass);
 
 // ================= Star Field (Hintergrund) =================
 
@@ -92,22 +58,22 @@ function createStarField() {
 createStarField();
 
 // ================= Zusätzliche Parameter mit Smoothing =================
+let targetMorphIntensity = 0.3;    // Wird per RNBO-Nachricht gesetzt
+let currentMorphIntensity = 0.3;   // Aktueller, geglätteter Wert
 
-let targetMorphIntensity = 0.3;    
-let currentMorphIntensity = 0.3;   
+let targetMorphFrequency = 4.0;    // Zielwert für die Frequenz
+let currentMorphFrequency = 4.0;   // Geglätteter Frequenzwert
 
-let targetMorphFrequency = 4.0;    
-let currentMorphFrequency = 4.0;   
+let targetNoiseFactor = 0.1;       // Zielwert für den Noise-Effekt
+let currentNoiseFactor = 0.1;      // Geglätteter Noise-Wert
 
-let targetNoiseFactor = 0.1;       
-let currentNoiseFactor = 0.1;      
-
-const smoothingFactor = 0.05;      
+const smoothingFactor = 0.05;      // Kleinere Werte = glattere Übergänge
 
 // ================= Morphing 3D-Objekt Setup =================
 
-// Hauptobjekt: Eine feingetesselte Kugel
+// Erstelle eine feingetesselte Kugelgeometrie als Basis für das Morphing
 const geometry = new THREE.SphereGeometry(1.5, 128, 128);
+// Speichere die ursprünglichen Vertex-Positionen
 geometry.userData.origPositions = geometry.attributes.position.array.slice(0);
 
 const material = new THREE.MeshBasicMaterial({
@@ -122,7 +88,7 @@ scene.add(morphObject);
 
 function createRandom3DShape() {
   const points = [];
-  const numPoints = 20 + Math.floor(Math.random() * 10);
+  const numPoints = 20 + Math.floor(Math.random() * 10); // zwischen 20 und 30 Punkte
   for (let i = 0; i < numPoints; i++) {
     const point = new THREE.Vector3(
       (Math.random() - 0.5),
@@ -132,7 +98,7 @@ function createRandom3DShape() {
     points.push(point);
   }
   const geometry = new THREE.ConvexGeometry(points);
-  // Skaliere auf ca. 1/3 der ursprünglichen Größe
+  // Skaliere die Geometrie auf etwa ein Drittel
   geometry.scale(0.33, 0.33, 0.33);
   return geometry;
 }
@@ -141,31 +107,33 @@ function createRandom3DShape() {
 const satellites = [];
 const satelliteCount = 8;
 
+// Satelliten-Erstellung: Weise jedem Satelliten eine zufällige Emissive-Farbe und Intensität zu
 for (let i = 0; i < satelliteCount; i++) {
-  // Erzeuge eine zufällige 3D-Form
+  // Erzeuge den Satelliten, z.B. mit deiner createRandom3DShape-Funktion:
   const satGeometry = createRandom3DShape();
   const satMaterial = new THREE.MeshStandardMaterial({
     color: 0xffffff,
     wireframe: true,
-    emissive: 0xffffff,  // Feste weiße Emissive-Farbe
-    emissiveIntensity: 0.2 + Math.random() * 1.5  // Unterschiedliche Glow-Stärken  
+    // Setze hier zufällige Emissive-Werte, die den Bloom beeinflussen
+    emissive: new THREE.Color(Math.random(), Math.random(), Math.random()),
+    emissiveIntensity: 0.2 + Math.random() * 0.8
   });
   const satellite = new THREE.Mesh(satGeometry, satMaterial);
-  
-  // Orbit-Parameter
+
+  // Orbit-Parameter etc.
   satellite.userData.angle = (i / satelliteCount) * Math.PI * 2;
   satellite.userData.inclination = (Math.random() - 0.5) * (Math.PI / 3);
   satellite.userData.orbitRadius = 2 + Math.random() * 2;
   satellite.userData.orbitSpeed = 0.2 + Math.random() * 0.8;
   satellite.userData.selfRotationSpeed = 0.2 + Math.random() * 0.5;
-  
+
   // Positionierung
   satellite.position.x = morphObject.position.x + satellite.userData.orbitRadius * Math.cos(satellite.userData.angle) * Math.cos(satellite.userData.inclination);
   satellite.position.y = morphObject.position.y + satellite.userData.orbitRadius * Math.sin(satellite.userData.inclination);
   satellite.position.z = morphObject.position.z + satellite.userData.orbitRadius * Math.sin(satellite.userData.angle) * Math.cos(satellite.userData.inclination);
   
-  // Weise den Satelliten der Bloom-Layer zu (Layer 1)
-  satellite.layers.enable(1);
+  // Weise diesen Satelliten der Bloom-Layer (z.B. Layer 1) zu
+  satellite.layers.set(1);
   
   satellites.push(satellite);
   scene.add(satellite);
@@ -175,13 +143,10 @@ for (let i = 0; i < satelliteCount; i++) {
 
 const clock = new THREE.Clock();
 
-// ================= Animation & Selective Bloom Rendering =================
-
 function animate() {
   requestAnimationFrame(animate);
   
   const delta = clock.getDelta();
-  
   // Update des Hauptobjekts (morphObject) – Morphing bleibt erhalten
   const positions = morphObject.geometry.attributes.position.array;
   const origPositions = morphObject.geometry.userData.origPositions;
@@ -203,8 +168,8 @@ function animate() {
   morphObject.rotation.x += 0.005;
   morphObject.rotation.y += 0.005;
   
-  // Update der Satelliten: Nur Orbit und Rotation (kein extra Morphing)
-  satellites.forEach((satellite) => {
+  // Update der Satelliten: Orbit und Rotation (keine zusätzliche Morphing-Logik)
+  satellites.forEach((satellite, index) => {
     satellite.userData.angle += satellite.userData.orbitSpeed * delta;
     satellite.position.x = morphObject.position.x + satellite.userData.orbitRadius * Math.cos(satellite.userData.angle) * Math.cos(satellite.userData.inclination);
     satellite.position.y = morphObject.position.y + satellite.userData.orbitRadius * Math.sin(satellite.userData.inclination);
@@ -217,21 +182,7 @@ function animate() {
   camera.position.x = Math.sin(clock.getElapsedTime() * 0.2) * 0.2;
   camera.rotation.y = Math.sin(clock.getElapsedTime() * 0.3) * 0.1;
   
-  // --- Selective Bloom Rendering ---
-  
-  // 1. Verdunkle alle Objekte, die nicht im Bloom-Layer sind.
-  scene.traverse(darkenNonBloomed);
-  
-  // 2. Render Bloom-Durchgang: Kamera nur auf Layer 1 setzen.
-  camera.layers.set(1);
-  bloomComposer.render();
-  
-  // 3. Stelle Materialien wieder her.
-  scene.traverse(restoreMaterial);
-  
-  // 4. Render die komplette Szene (Basis) – Kamera wieder auf alle Layer.
-  camera.layers.set(0);
-  finalComposer.render();
+  composer.render();
 }
 
 animate();
