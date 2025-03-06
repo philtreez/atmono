@@ -341,6 +341,8 @@ function visualizeWaveform(samples) {
       ctx.lineTo(i, y);
     }
   }
+  ctx.strokeStyle = "white";
+  ctx.lineWidth = 1;
   ctx.stroke();
 }
 
