@@ -84,34 +84,24 @@ const material = new THREE.MeshBasicMaterial({
 const morphObject = new THREE.Mesh(geometry, material);
 scene.add(morphObject);
 
-// ================= Zufällige Geometrien für Satelliten =================
+// ================= Zufällige 3D-Formen via ConvexGeometry =================
 
-function createRandomGeometry() {
-  const choice = Math.floor(Math.random() * 4);
-  switch (choice) {
-    case 0:
-      // Box: zufällige Größe zwischen 0.2 und 0.4
-      const boxSize = 0.2 + Math.random() * 0.2;
-      return new THREE.BoxGeometry(boxSize, boxSize, boxSize);
-    case 1:
-      // Cone: Basisradius, Höhe und Radialsegmente zufällig wählen
-      const coneRadius = 0.15 + Math.random() * 0.15;
-      const coneHeight = 0.3 + Math.random() * 0.2;
-      return new THREE.ConeGeometry(coneRadius, coneHeight, 16);
-    case 2:
-      // Torus: zufälliger Haupt- und Tubusradius
-      const torusRadius = 0.2 + Math.random() * 0.2;
-      const tubeRadius = 0.05 + Math.random() * 0.1;
-      return new THREE.TorusGeometry(torusRadius, tubeRadius, 16, 32);
-    case 3:
-      // Cylinder: zufälliger Ober- und Unterradius, Höhe
-      const cylTop = 0.1 + Math.random() * 0.1;
-      const cylBottom = 0.1 + Math.random() * 0.1;
-      const cylHeight = 0.3 + Math.random() * 0.2;
-      return new THREE.CylinderGeometry(cylTop, cylBottom, cylHeight, 16);
-    default:
-      return new THREE.SphereGeometry(0.2, 32, 32);
+function createRandom3DShape() {
+  // Erzeuge eine zufällige Anzahl an Punkten (zwischen 20 und 30)
+  const points = [];
+  const numPoints = 20 + Math.floor(Math.random() * 10);
+  for (let i = 0; i < numPoints; i++) {
+    // Erzeuge einen zufälligen Punkt in einer Kugel (Radius zwischen 0.5 und 1.0)
+    const point = new THREE.Vector3(
+      (Math.random() - 0.5),
+      (Math.random() - 0.5),
+      (Math.random() - 0.5)
+    ).normalize().multiplyScalar(0.5 + Math.random() * 0.5);
+    points.push(point);
   }
+  // Erzeuge die konvexe Hülle dieser Punkte als Geometrie
+  const geometry = new THREE.ConvexGeometry(points);
+  return geometry;
 }
 
 // ================= Satelliten (Orbit um das Hauptobjekt) =================
@@ -119,8 +109,8 @@ const satellites = [];
 const satelliteCount = 8;
 
 for (let i = 0; i < satelliteCount; i++) {
-  // Verwende zufällige Geometrie statt einer Kugel
-  const satGeometry = createRandomGeometry();
+  // Verwende die zufällige 3D-Form statt einer Kugel
+  const satGeometry = createRandom3DShape();
   // Material im Wireframe-Modus beibehalten
   const satMaterial = new THREE.MeshStandardMaterial({
     color: 0xffffff,
@@ -154,8 +144,6 @@ function animate() {
   requestAnimationFrame(animate);
   
   const delta = clock.getDelta();
-  // Debug: console.log("delta:", delta);
-  
   // Update des Hauptobjekts (morphObject) – Morphing bleibt erhalten
   const positions = morphObject.geometry.attributes.position.array;
   const origPositions = morphObject.geometry.userData.origPositions;
@@ -177,7 +165,7 @@ function animate() {
   morphObject.rotation.x += 0.005;
   morphObject.rotation.y += 0.005;
   
-  // Update der Satelliten: Orbit und Rotation (kein Morphing!)
+  // Update der Satelliten: Orbit und Rotation (keine zusätzliche Morphing-Logik)
   satellites.forEach((satellite, index) => {
     satellite.userData.angle += satellite.userData.orbitSpeed * delta;
     satellite.position.x = morphObject.position.x + satellite.userData.orbitRadius * Math.cos(satellite.userData.angle) * Math.cos(satellite.userData.inclination);
@@ -195,8 +183,6 @@ function animate() {
 }
 
 animate();
-
-
 
 
 // ================= Effekt: Random Planet (seqlight) =================
